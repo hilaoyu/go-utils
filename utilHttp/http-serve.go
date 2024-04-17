@@ -23,60 +23,63 @@ func NewHttpServe(addr string, handler http.Handler) (s *HttpServer) {
 	return
 }
 
-func (s *HttpServer) SetReadTimeout(t time.Duration) {
+func (s *HttpServer) SetReadTimeout(t time.Duration) *HttpServer {
 	s.server.ReadTimeout = t
+	return s
 }
-func (s *HttpServer) SetReadHeaderTimeout(t time.Duration) {
+func (s *HttpServer) SetReadHeaderTimeout(t time.Duration) *HttpServer {
 	s.server.ReadHeaderTimeout = t
+	return s
 }
-func (s *HttpServer) SetWriteTimeout(t time.Duration) {
+func (s *HttpServer) SetWriteTimeout(t time.Duration) *HttpServer {
 	s.server.WriteTimeout = t
+	return s
 }
-func (s *HttpServer) SetIdleTimeout(t time.Duration) {
+func (s *HttpServer) SetIdleTimeout(t time.Duration) *HttpServer {
 	s.server.IdleTimeout = t
+	return s
 }
 
-func (s *HttpServer) SetMaxHeaderBytes(i int) {
+func (s *HttpServer) SetMaxHeaderBytes(i int) *HttpServer {
 	s.server.MaxHeaderBytes = i
+	return s
 }
 
-func (s *HttpServer) UseServerSsl(certFile string, keyFile string) {
+func (s *HttpServer) UseServerSsl(certFile string, keyFile string) *HttpServer {
 	s.sslServerCertFile = certFile
 	s.sslServerKeyFile = keyFile
+	return s
 }
 
-func (s *HttpServer) VerifyClientSsl(caFile string) {
+func (s *HttpServer) VerifyClientSsl(caFile string) *HttpServer {
 	s.sslVerifyClientCaFile = caFile
+	return s
 }
 
 func (s *HttpServer) Run(logger *log.Logger) (err error) {
 
-	if "" != s.sslServerCertFile || "" != s.sslServerKeyFile {
+	if "" != s.sslVerifyClientCaFile {
 		tlsConfig := &tls.Config{}
-
-		tlsConfig.Certificates = make([]tls.Certificate, 1)
-		tlsConfig.Certificates[0], err = tls.LoadX509KeyPair(s.sslServerCertFile, s.sslServerKeyFile)
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		certPEMBlock, err := os.ReadFile(s.sslVerifyClientCaFile)
 		if err != nil {
 			return err
 		}
-
-		if "" != s.sslVerifyClientCaFile {
-			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-			certPEMBlock, err := os.ReadFile(s.sslVerifyClientCaFile)
-			if err != nil {
-				return err
-			}
-			caPool := x509.NewCertPool()
-			caPool.AppendCertsFromPEM(certPEMBlock)
-			tlsConfig.ClientCAs = caPool
-		}
-
+		caPool := x509.NewCertPool()
+		caPool.AppendCertsFromPEM(certPEMBlock)
+		tlsConfig.ClientCAs = caPool
 		s.server.TLSConfig = tlsConfig
 	}
 
 	go func() {
 		// 服务连接
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if "" != s.sslServerCertFile || "" != s.sslServerKeyFile {
+			err = s.server.ListenAndServeTLS(s.sslServerCertFile, s.sslServerKeyFile)
+		} else {
+			err = s.server.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("listen: %s\n", err)
 		}
 	}()
@@ -87,7 +90,7 @@ func (s *HttpServer) Run(logger *log.Logger) (err error) {
 	<-quit
 	logger.Println("Shutdown Server ...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Second)
 	defer cancel()
 	if err = s.server.Shutdown(ctx); err != nil {
 		logger.Fatal("Server Shutdown:", err)
