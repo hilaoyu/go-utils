@@ -5,18 +5,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 )
-
-type HttpServer struct {
-	server                *http.Server
-	sslServerCertFile     string
-	sslServerKeyFile      string
-	sslVerifyClientCaFile string
-}
 
 func NewHttpServe(addr string, handler http.Handler) (s *HttpServer) {
 	s = &HttpServer{server: &http.Server{Addr: addr, Handler: handler}}
@@ -96,5 +91,42 @@ func (s *HttpServer) Run(logger *log.Logger) (err error) {
 		logger.Fatal("Server Shutdown:", err)
 	}
 	logger.Println("Server exiting")
+	return
+}
+
+func GetClientIps(r *http.Request) (ips []string) {
+
+	ip := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0])
+	if ip != "" {
+		ips = append(ips, ip)
+	}
+
+	ip = strings.TrimSpace(r.Header.Get("X-Real-Ip"))
+	if ip != "" {
+		ips = append(ips, ip)
+	}
+
+	if ip, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil {
+		ips = append(ips, ip)
+	}
+
+	return
+}
+func GetClientIP(r *http.Request) (ip string) {
+	ips := GetClientIps(r)
+	if len(ips) > 0 {
+		ip = ips[0]
+	}
+	return
+}
+func GetClientPublicIP(r *http.Request) (ip string) {
+	ips := GetClientIps(r)
+	for _, ipTemp := range ips {
+		ipParse := net.ParseIP(ipTemp)
+		if nil != ipParse && ipParse.IsGlobalUnicast() && !ipParse.IsPrivate() {
+			ip = ipTemp
+			return
+		}
+	}
 	return
 }
