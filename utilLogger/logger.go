@@ -63,7 +63,7 @@ func Panic(msg interface{}) {
 	if nil == defaultLogger {
 		return
 	}
-	defaultLogger.Fatal(msg)
+	defaultLogger.Panic(msg)
 }
 
 func NewLogger() *Logger {
@@ -90,16 +90,9 @@ func (l *Logger) AddFileWriter(dest string) (err error) {
 	return
 }
 func (l *Logger) AddFileRotationWriter(dir string, name string, maxBackups int, maxSize int, maxAge int) (err error) {
-	err = os.MkdirAll(dir, 0744)
+	w, err := NewFileRotationWriter(dir, name, maxBackups, maxSize, maxAge)
 	if err != nil {
 		return
-	}
-
-	w := &lumberjack.Logger{
-		Filename:   path.Join(dir, name),
-		MaxBackups: maxBackups, // files
-		MaxSize:    maxSize,    // megabytes
-		MaxAge:     maxAge,     // days
 	}
 	l.writers = append(l.writers, w)
 	return
@@ -148,5 +141,20 @@ func (l *Logger) Fatal(msg interface{}) {
 }
 func (l *Logger) Panic(msg interface{}) {
 	l.Init(false)
-	l.logger.Fatal().Msg(fmt.Sprintf("%+v", msg))
+	l.logger.Panic().Msg(fmt.Sprintf("%+v", msg))
+}
+
+func NewFileRotationWriter(dir string, name string, maxBackups int, maxSize int, maxAge int) (w io.Writer, err error) {
+	err = os.MkdirAll(dir, 0744)
+	if err != nil {
+		return
+	}
+	w = &lumberjack.Logger{
+		Filename:   path.Join(dir, name),
+		MaxBackups: maxBackups, // files
+		MaxSize:    maxSize,    // megabytes
+		MaxAge:     maxAge,     // days
+	}
+
+	return
 }

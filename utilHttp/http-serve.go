@@ -4,7 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"log"
+	"fmt"
+	"github.com/hilaoyu/go-utils/utilLogger"
 	"net"
 	"net/http"
 	"os"
@@ -51,7 +52,7 @@ func (s *HttpServer) VerifyClientSsl(caFile string) *HttpServer {
 	return s
 }
 
-func (s *HttpServer) Run(logger *log.Logger) (err error) {
+func (s *HttpServer) Run(logger *utilLogger.Logger) (err error) {
 
 	if "" != s.sslVerifyClientCaFile {
 		tlsConfig := &tls.Config{}
@@ -66,31 +67,34 @@ func (s *HttpServer) Run(logger *log.Logger) (err error) {
 		s.server.TLSConfig = tlsConfig
 	}
 
+	httpListenScheme := "http"
+
 	go func() {
 		// 服务连接
 		if "" != s.sslServerCertFile || "" != s.sslServerKeyFile {
 			err = s.server.ListenAndServeTLS(s.sslServerCertFile, s.sslServerKeyFile)
+			httpListenScheme = "https:"
 		} else {
 			err = s.server.ListenAndServe()
 		}
 
 		if err != nil && err != http.ErrServerClosed {
-			logger.Fatalf("listen: %s\n", err)
+			logger.Fatal(fmt.Sprintf("listen: %s\n", err))
 		}
 	}()
-
+	logger.Info(fmt.Sprintf("http server listen: %s://%s\n", httpListenScheme, s.server.Addr))
 	// 等待中断信号以优雅地关闭服务器（设置 5 秒的超时时间）
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-	logger.Println("Shutdown Server ...")
+	logger.Info("Shutdown Server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Second)
 	defer cancel()
 	if err = s.server.Shutdown(ctx); err != nil {
-		logger.Fatal("Server Shutdown:", err)
+		logger.Fatal(fmt.Sprintf("Server Shutdown:", err))
 	}
-	logger.Println("Server exiting")
+	logger.Info("Server exiting")
 	return
 }
 
