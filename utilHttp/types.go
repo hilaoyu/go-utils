@@ -45,5 +45,6 @@ type ApiReturnJson struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Errors  []string    `json:"errors"`
+	Debug   []string    `json:"debug,omitempty"`
 	Data    interface{} `json:"data"`
 }
