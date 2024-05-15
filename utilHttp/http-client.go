@@ -198,6 +198,14 @@ func (uh *HttpClient) ClearParams() *HttpClient {
 	uh.params = url.Values{}
 	return uh.buildClient()
 }
+func (uh *HttpClient) WithRawBody(body string) *HttpClient {
+	uh.rawBody = body
+	return uh.buildClient()
+}
+func (uh *HttpClient) ClearRawBody() *HttpClient {
+	uh.rawBody = ""
+	return uh.buildClient()
+}
 
 func (uh *HttpClient) WithEncryptData(data map[string]interface{}) *HttpClient {
 	uh.needEncData = data
@@ -222,7 +230,13 @@ func (uh *HttpClient) Request(method string, path string, additionalHeaders map[
 
 	//fmt.Println(remoteUrl, params.Encode())
 
-	req, err := http.NewRequest(method, remoteUrl, strings.NewReader(params.Encode()))
+	var body *strings.Reader
+	if "" != uh.rawBody {
+		body = strings.NewReader(uh.rawBody)
+	} else {
+		body = strings.NewReader(params.Encode())
+	}
+	req, err := http.NewRequest(method, remoteUrl, body)
 
 	if err != nil {
 		return nil, err

@@ -26,6 +26,7 @@ type HttpClient struct {
 	lastRespStatusCode      int
 	client                  *http.Client
 
+	rawBody     string
 	params      url.Values
 	needEncData map[string]interface{}
 	headers     map[string]string
