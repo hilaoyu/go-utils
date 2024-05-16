@@ -37,7 +37,6 @@ func ParseX509PrivateKeyFile(path string) (priKey *rsa.PrivateKey, err error) {
 		err = fmt.Errorf("读取KEY内容出错: %+v", err)
 		return
 	}
-	fmt.Println(string(keyContent))
 	blockKey, _ := pem.Decode(keyContent)
 	switch blockKey.Type {
 	case "RSA PRIVATE KEY":

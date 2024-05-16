@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hilaoyu/go-utils/utilEnc"
+	"github.com/hilaoyu/go-utils/utilLogger"
 	"github.com/hilaoyu/go-utils/utilProxy"
 	"github.com/hilaoyu/go-utils/utilSsl"
 	"io"
@@ -79,7 +80,7 @@ func (uh *HttpClient) buildClient() *HttpClient {
 		if nil == err {
 			tlsConfig.Certificates = []tls.Certificate{tlsCertificate}
 		} else {
-			fmt.Println("tls.X509KeyPair err:", err)
+			uh.logError(fmt.Sprintf("tls.X509KeyPair err: %v", err))
 		}
 	}
 
@@ -245,7 +246,6 @@ func (uh *HttpClient) Request(method string, path string, additionalHeaders map[
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	for hk, hv := range uh.headers {
-		fmt.Println("uh.headers", hk, hv)
 		req.Header.Set(hk, hv)
 	}
 
@@ -346,7 +346,6 @@ func (uh *HttpClient) PostFile(path string, filedName string, file string, heade
 		return
 	}
 	for hk, hv := range uh.headers {
-		fmt.Println("uh.headers", hk, hv)
 		req.Header.Set(hk, hv)
 	}
 
@@ -406,6 +405,27 @@ func (uh *HttpClient) DownloadFile(path string, headers map[string]string) (body
 		body = []byte("")
 	}
 
+	return
+}
+
+func (uh *HttpClient) SerLogger(logger *utilLogger.Logger) *HttpClient {
+	uh.logger = logger
+	return uh
+}
+func (uh *HttpClient) logInfo(msg interface{}) {
+	if nil == uh.logger {
+		return
+	}
+
+	uh.logger.Info(msg)
+	return
+}
+func (uh *HttpClient) logError(msg interface{}) {
+	if nil == uh.logger {
+		return
+	}
+
+	uh.logger.Error(msg)
 	return
 }
 

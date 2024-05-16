@@ -103,7 +103,7 @@ func CheckDir(p string, perm ...os.FileMode) bool {
 	}
 	err := os.MkdirAll(p, newDirPerm)
 	if nil != err {
-		fmt.Println(err)
+		//fmt.Println(err)
 		return false
 	}
 	return true

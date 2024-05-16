@@ -134,3 +134,17 @@ func GetClientPublicIP(r *http.Request) (ip string) {
 	}
 	return
 }
+func GetClientPlatform(r *http.Request) (clientPlatform string) {
+	clientPlatform = r.Header.Get("ClientPlatform")
+	if "" == clientPlatform {
+		clientPlatform = "web"
+	}
+	return
+}
+func GetClientSource(r *http.Request) (clientSource string) {
+	clientSource = r.Header.Get("ClientSource")
+	if "" == clientSource {
+		clientSource = GetClientIP(r)
+	}
+	return
+}

@@ -16,14 +16,15 @@ type UtilGorm struct {
 	orm *gorm.DB
 }
 
-func NewUtilGormMysql(host string, port int, user string, password string, dbName string, timeout time.Duration) (utilOrm *UtilGorm, err error) {
+func NewUtilGormMysql(host string, port int, user string, password string, dbName string, tablePrefix string, timeout time.Duration) (utilOrm *UtilGorm, err error) {
+	//
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=%s", user, password, host, port, dbName, timeout)
 	//fmt.Println(dsn)
 	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		SkipDefaultTransaction: true,
 		NamingStrategy: schema.NamingStrategy{
-			TablePrefix:   "vam_",
+			TablePrefix:   tablePrefix,
 			SingularTable: true,
 			//NameReplacer:  nil,
 			//NoLowerCase:   false,

@@ -2,6 +2,7 @@ package utilHttp
 
 import (
 	"github.com/hilaoyu/go-utils/utilEnc"
+	"github.com/hilaoyu/go-utils/utilLogger"
 	"github.com/hilaoyu/go-utils/utilProxy"
 	"net/http"
 	"net/url"
@@ -39,6 +40,8 @@ type HttpClient struct {
 
 	aesEncryptor *utilEnc.AesEncryptor
 	aesEncAppId  string
+
+	logger *utilLogger.Logger
 }
 
 type ApiReturnJson struct {

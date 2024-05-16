@@ -124,7 +124,6 @@ func MongodbHasIndexes(indexView mongo.IndexView) (found bool) {
 	cursor, err := indexView.List(ctxBk)
 
 	if nil != err {
-		fmt.Println(err)
 		return
 	}
 	defer cursor.Close(ctxBk)

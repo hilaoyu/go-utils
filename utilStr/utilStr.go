@@ -1,7 +1,6 @@
 package utilStr
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -63,7 +62,6 @@ func Before(haystack string, needle string) string {
 
 	arr := strings.Split(haystack, needle)
 	arrLen := len(arr)
-	fmt.Println(arrLen)
 	if arrLen >= 2 {
 		arr = arr[0 : arrLen-1]
 	}
