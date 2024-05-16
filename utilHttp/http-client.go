@@ -408,7 +408,7 @@ func (uh *HttpClient) DownloadFile(path string, headers map[string]string) (body
 	return
 }
 
-func (uh *HttpClient) SerLogger(logger *utilLogger.Logger) *HttpClient {
+func (uh *HttpClient) SetLogger(logger *utilLogger.Logger) *HttpClient {
 	uh.logger = logger
 	return uh
 }
