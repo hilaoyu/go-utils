@@ -36,10 +36,17 @@ type Paginator struct {
 func NewPaginator(req *http.Request, pageSize int, total interface{}) *Paginator {
 	p := Paginator{}
 	p.Request = req
-	if pageSize <= 0 {
-		pageSize = 10
+	perPage, _ := strconv.Atoi(p.Request.FormValue("per_page"))
+	if perPage <= 0 {
+		perPage = pageSize
 	}
-	p.PerPage = pageSize
+	if perPage <= 0 {
+		perPage = 10
+	}
+	if perPage > 1000 {
+		perPage = 1000
+	}
+	p.PerPage = perPage
 	p.SetTotal(total)
 	p.GetPages()
 	return &p
@@ -71,7 +78,7 @@ func (p *Paginator) GetCurrentPage() int {
 	if p.Request.Form == nil {
 		p.Request.ParseForm()
 	}
-	p.CurrentPage, _ = strconv.Atoi(p.Request.Form.Get("pager_page"))
+	p.CurrentPage, _ = strconv.Atoi(p.Request.FormValue("pager_page"))
 	/*if p.CurrentPage > p.GetPageNums() {
 		p.CurrentPage = p.GetPageNums()
 	}*/

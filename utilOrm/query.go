@@ -6,7 +6,8 @@ import (
 )
 
 type OrmQuery struct {
-	orm *gorm.DB
+	orm   *gorm.DB
+	pager *utilHttp.Paginator
 }
 
 func (q *OrmQuery) WithPager(p *utilHttp.Paginator) *OrmQuery {
@@ -14,6 +15,7 @@ func (q *OrmQuery) WithPager(p *utilHttp.Paginator) *OrmQuery {
 	q.orm.Count(&total)
 	p.SetTotal(total)
 	q.orm = q.orm.Limit(p.PerPage).Offset(p.Offset())
+	q.pager = p
 	return q
 }
 func (q *OrmQuery) WithRelates(relates map[string][]interface{}) *OrmQuery {
@@ -66,9 +68,38 @@ func (q *OrmQuery) Offset(offset int) *OrmQuery {
 	q.orm = q.orm.Offset(offset)
 	return q
 }
+func (q *OrmQuery) Select(query interface{}, args ...interface{}) *OrmQuery {
+	q.orm = q.orm.Select(query, args...)
+	return q
+}
+func (q *OrmQuery) Distinct(args ...interface{}) *OrmQuery {
+	q.orm = q.orm.Distinct(args...)
+	return q
+}
 
-func (q *OrmQuery) Select(models interface{}, conds ...interface{}) (err error) {
+func (q *OrmQuery) Count(count *int64) (err error) {
+	result := q.orm.Count(count)
+	err = result.Error
+	return
+}
+func (q *OrmQuery) Find(models interface{}, conds ...interface{}) (err error) {
 	result := q.orm.Find(models, conds...)
+	if nil != result.Error {
+		err = result.Error
+		return
+	}
+	if nil != q.pager {
+		q.Count(&q.pager.Total)
+	}
+	return
+}
+func (q *OrmQuery) Pluck(column string, model interface{}) (err error) {
+	result := q.orm.Pluck(column, model)
+	err = result.Error
+	return
+}
+func (q *OrmQuery) Scan(model interface{}) (err error) {
+	result := q.orm.Scan(model)
 	err = result.Error
 	return
 }

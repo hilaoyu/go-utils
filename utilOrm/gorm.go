@@ -1,6 +1,7 @@
 package utilOrm
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/hilaoyu/go-utils/utils"
 	"gorm.io/driver/mysql"
@@ -60,6 +61,41 @@ func (o *UtilGorm) Debug(debug bool) *UtilGorm {
 func (o *UtilGorm) Raw(sql string, values ...interface{}) (err error) {
 	result := o.orm.Raw(sql, values...)
 	err = result.Error
+	return
+}
+
+func (o *UtilGorm) Clauses(conds ...clause.Expression) *UtilGorm {
+	o.orm = o.orm.Clauses(conds...)
+	return o
+}
+func (o *UtilGorm) Where(query interface{}, args ...interface{}) *UtilGorm {
+	o.orm = o.orm.Where(query, args...)
+	return o
+}
+
+func (o *UtilGorm) Begin(opts ...*sql.TxOptions) (err error) {
+	o.orm = o.orm.Begin(opts...)
+	err = o.orm.Error
+	return
+}
+func (o *UtilGorm) Commit() (err error) {
+	o.orm = o.orm.Commit()
+	err = o.orm.Error
+	return
+}
+func (o *UtilGorm) Rollback() (err error) {
+	o.orm = o.orm.Rollback()
+	err = o.orm.Error
+	return
+}
+func (o *UtilGorm) SavePoint(name string) (err error) {
+	o.orm = o.orm.SavePoint(name)
+	err = o.orm.Error
+	return
+}
+func (o *UtilGorm) RollbackTo(name string) (err error) {
+	o.orm = o.orm.RollbackTo(name)
+	err = o.orm.Error
 	return
 }
 
