@@ -122,44 +122,41 @@ func (o *UtilGorm) ModelQuery(model interface{}, orderBy *[]string) *OrmQuery {
 	return &OrmQuery{orm: q}
 }
 
-func (o *UtilGorm) ModelRelatedLoad(model interface{}, relates ...string) (err error) {
-	for _, related := range relates {
-		relatedValue := utils.GetInterfaceFiledValue(model, related)
-		if !relatedValue.IsValid() {
-			continue
+func (o *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ...interface{}) (err error) {
+	relatedValue := utils.GetInterfaceFiledValue(model, related)
+	if !relatedValue.IsValid() {
+		err = fmt.Errorf("关联关系错误")
+		return
+	}
+
+	t := relatedValue.Type()
+	isPtr := t.Kind() == reflect.Ptr
+	if isPtr {
+		t = t.Elem()
+	}
+
+	v := reflect.New(t).Interface()
+
+	//fmt.Println("related err", related, nil == v)
+	//continue
+	qr := o.ModelQuery(model, nil).orm.Association(related)
+	err = qr.Find(v, conds...)
+
+	if nil != err {
+		if reflect.DeepEqual(err, gorm.ErrRecordNotFound) {
+			err = nil
 		}
+		return
+	}
 
-		t := relatedValue.Type()
-		isPtr := t.Kind() == reflect.Ptr
-		if isPtr {
-			t = t.Elem()
-		}
+	if qr.DB.RowsAffected <= 0 {
+		return
+	}
 
-		v := reflect.New(t).Interface()
-
-		//fmt.Println("related err", related, nil == v)
-		//continue
-		qr := o.ModelQuery(model, nil).orm.Association(related)
-		err = qr.Find(v)
-
-		if nil != err {
-			if reflect.DeepEqual(err, gorm.ErrRecordNotFound) {
-				err = nil
-				continue
-			}
-			return
-		}
-
-		if qr.DB.RowsAffected <= 0 {
-			continue
-		}
-
-		if isPtr {
-			relatedValue.Set(reflect.ValueOf(v))
-		} else {
-			relatedValue.Set(reflect.ValueOf(v).Elem())
-		}
-
+	if isPtr {
+		relatedValue.Set(reflect.ValueOf(v))
+	} else {
+		relatedValue.Set(reflect.ValueOf(v).Elem())
 	}
 	return
 }

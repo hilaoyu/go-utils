@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type SshExecFunc func(sshClient *ssh.Client, sftpClient *sftp.Client) error
+type SshExecFunc func(sshClient *SshClient) error
 
 const PROXY_TYPE_SOCKS5 = "socks5"
 
@@ -149,6 +149,13 @@ func (c *SshClient) Exec(command string, wait ...bool) (output string, err error
 	//fmt.Println(output)
 	return output, err
 
+}
+func (c *SshClient) SFtpClient() (sftpClient *sftp.Client, err error) {
+	if nil == c.sftpClient {
+		c.sftpClient, err = sftp.NewClient(c.sshClient)
+	}
+	sftpClient = c.sftpClient
+	return
 }
 
 func (c *SshClient) SendFile(localFile string, remoteFile string) (err error) {

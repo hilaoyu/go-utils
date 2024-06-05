@@ -1,6 +1,7 @@
 package utilStr
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -115,4 +116,9 @@ func CamelString(s string) string {
 		data = append(data, d)
 	}
 	return string(data)
+}
+func IsDigit(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+
+	return nil == err
 }
