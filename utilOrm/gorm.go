@@ -149,10 +149,6 @@ func (o *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ...
 		return
 	}
 
-	if qr.DB.RowsAffected <= 0 {
-		return
-	}
-
 	if isPtr {
 		relatedValue.Set(reflect.ValueOf(v))
 	} else {

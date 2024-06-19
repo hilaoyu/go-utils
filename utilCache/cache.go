@@ -58,6 +58,43 @@ func (c *Cache) Has(key string) bool {
 func (c *Cache) Get(key string) interface{} {
 	return c.cacheManager.Get(key)
 }
+func (c *Cache) GetBool(key string) (v bool) {
+	vt := c.cacheManager.Get(key)
+	if nil == vt {
+		return
+	}
+
+	v, ok := vt.(bool)
+	if !ok {
+		v = false
+	}
+
+	return
+}
+func (c *Cache) GetString(key string) (v string, ok bool) {
+	vt := c.cacheManager.Get(key)
+	if nil == vt {
+		return
+	}
+	v, ok = vt.(string)
+	return
+}
+func (c *Cache) GetInt(key string) (v int, ok bool) {
+	vt := c.cacheManager.Get(key)
+	if nil == vt {
+		return
+	}
+	v, ok = vt.(int)
+	return
+}
+func (c *Cache) GetInt64(key string) (v int64, ok bool) {
+	vt := c.cacheManager.Get(key)
+	if nil == vt {
+		return
+	}
+	v, ok = vt.(int64)
+	return
+}
 
 // Set value by key
 func (c *Cache) Set(key string, val interface{}, ttl ...time.Duration) error {
