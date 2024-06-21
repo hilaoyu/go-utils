@@ -2,7 +2,6 @@ package utilBuf
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -11,6 +10,8 @@ import (
 type BufCopy struct {
 	*sync.Pool
 }
+
+type BufCopyProgressFunc func(written int64) (err error)
 
 func NewBufCopy() *BufCopy {
 	p := &BufCopy{&sync.Pool{
@@ -21,7 +22,7 @@ func NewBufCopy() *BufCopy {
 	return p
 }
 
-func (b *BufCopy) Copy(dst io.Writer, src io.Reader) (written int64, err error) {
+func (b *BufCopy) Copy(dst io.Writer, src io.Reader, progressFunc ...BufCopyProgressFunc) (written int64, err error) {
 	// If the reader has a WriteTo method, use it to do the copy.
 	// Avoids an allocation and a copy.
 	if wt, ok := src.(io.WriterTo); ok {
@@ -39,7 +40,6 @@ func (b *BufCopy) Copy(dst io.Writer, src io.Reader) (written int64, err error) 
 		nr, er := src.Read(buf)
 		//fmt.Println("bc Copy buf",nr,string(buf[0:nr]),buf[0:nr])
 		if er == io.EOF {
-			err = fmt.Errorf("read eof")
 			break
 		}
 
@@ -50,9 +50,6 @@ func (b *BufCopy) Copy(dst io.Writer, src io.Reader) (written int64, err error) 
 
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])
-			if nw > 0 {
-				written += int64(nw)
-			}
 
 			if ew != nil {
 				err = ew
@@ -61,6 +58,17 @@ func (b *BufCopy) Copy(dst io.Writer, src io.Reader) (written int64, err error) 
 
 			if nr != nw {
 				err = io.ErrShortWrite
+				break
+			}
+			if nw > 0 {
+				written += int64(nw)
+			}
+		}
+
+		if len(progressFunc) > 0 {
+			ep := progressFunc[0](written)
+			if nil != ep {
+				err = ep
 				break
 			}
 		}
