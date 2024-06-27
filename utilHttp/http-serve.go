@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-func NewHttpServe(addr string, handler http.Handler) (s *HttpServer) {
-	s = &HttpServer{server: &http.Server{Addr: addr, Handler: handler}}
+func NewHttpServe(handler http.Handler, addresses ...*HttpServerListenAddr) (s *HttpServer) {
+	s = &HttpServer{server: &http.Server{Handler: handler}, listenAddresses: addresses}
 	return
 }
 
@@ -67,22 +67,54 @@ func (s *HttpServer) Run(logger *utilLogger.Logger) (err error) {
 		s.server.TLSConfig = tlsConfig
 	}
 
-	httpListenScheme := "http"
+	servErrorChan := make(chan error, 100)
+	for _, listenAddr := range s.listenAddresses {
+		listenAddr.Network = strings.ToLower(listenAddr.Network)
+		httpListenScheme := listenAddr.Network
+		listener, err := net.Listen(listenAddr.Network, listenAddr.Addr)
+		if nil != err {
+			logger.Fatal(fmt.Sprintf("http server listen %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err))
+			continue
+		}
+		switch listenAddr.Network {
+		case "tcp", "udp":
+			// 服务连接
+			if "" != s.sslServerCertFile || "" != s.sslServerKeyFile {
+				httpListenScheme = "https"
+				go func() {
+					err1 := s.server.ServeTLS(listener, s.sslServerCertFile, s.sslServerKeyFile)
+					servErrorChan <- fmt.Errorf("http server serv %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err1)
+				}()
+			} else {
+				httpListenScheme = "http"
+				go func() {
+					err1 := s.server.Serve(listener)
+					servErrorChan <- fmt.Errorf("http server serv %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err1)
+				}()
 
-	go func() {
-		// 服务连接
-		if "" != s.sslServerCertFile || "" != s.sslServerKeyFile {
-			err = s.server.ListenAndServeTLS(s.sslServerCertFile, s.sslServerKeyFile)
-			httpListenScheme = "https:"
-		} else {
-			err = s.server.ListenAndServe()
+			}
+			break
+		default:
+			go func() {
+				err1 := s.server.Serve(listener)
+				servErrorChan <- fmt.Errorf("http server serv %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err1)
+			}()
+			break
+
 		}
 
 		if err != nil && err != http.ErrServerClosed {
-			logger.Fatal(fmt.Sprintf("listen: %s\n", err))
+			logger.Fatal(fmt.Sprintf("http server listen %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err))
+		} else {
+			logger.Info(fmt.Sprintf("http server listen: %s://%s\n", httpListenScheme, listenAddr.Addr))
 		}
+
+	}
+
+	go func() {
+		errServ := <-servErrorChan
+		logger.Fatal(fmt.Sprintf(" %v\n", errServ))
 	}()
-	logger.Info(fmt.Sprintf("http server listen: %s://%s\n", httpListenScheme, s.server.Addr))
 	// 等待中断信号以优雅地关闭服务器（设置 5 秒的超时时间）
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
