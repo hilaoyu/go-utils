@@ -87,6 +87,13 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 			logger.ErrorF("server listen %s://%s , error: %v\n", listenAddr.Network, listenAddr.Addr, err)
 			continue
 		}
+		if "unix" == listenAddr.Network && listenAddr.Uid > 0 && listenAddr.Gid > 0 {
+			if err = os.Chown(listenAddr.Addr, listenAddr.Uid, listenAddr.Gid); err != nil {
+				logger.ErrorF("server listen %s://%s , Chmod error: %v\n", listenAddr.Network, listenAddr.Addr, err)
+				listener.Close()
+				continue
+			}
+		}
 		switch listenAddr.Network {
 		case "tcp":
 			if "" != s.sslServerCertFile && "" != s.sslServerKeyFile {

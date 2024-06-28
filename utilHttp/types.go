@@ -12,6 +12,8 @@ import (
 type ServerListenAddr struct {
 	Network string `json:"network,omitempty"`
 	Addr    string `json:"addr,omitempty"`
+	Uid     int    `json:"uid,omitempty"`
+	Gid     int    `json:"gid,omitempty"`
 }
 
 type HttpServer struct {
