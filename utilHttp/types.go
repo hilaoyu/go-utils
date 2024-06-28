@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-type HttpServerListenAddr struct {
+type ServerListenAddr struct {
 	Network string `json:"network,omitempty"`
 	Addr    string `json:"addr,omitempty"`
 }
 
 type HttpServer struct {
-	listenAddresses       []*HttpServerListenAddr
+	listenAddresses       []*ServerListenAddr
 	server                *http.Server
 	sslServerCertFile     string
 	sslServerKeyFile      string

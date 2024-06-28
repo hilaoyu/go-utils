@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/hilaoyu/go-utils/utilLogger"
 	"net"
 	"net/http"
@@ -14,7 +13,7 @@ import (
 	"time"
 )
 
-func NewHttpServe(handler http.Handler, addresses ...*HttpServerListenAddr) (s *HttpServer) {
+func NewHttpServe(handler http.Handler, addresses ...*ServerListenAddr) (s *HttpServer) {
 	s = &HttpServer{server: &http.Server{Handler: handler}, listenAddresses: addresses}
 	return
 }
@@ -52,13 +51,27 @@ func (s *HttpServer) VerifyClientSsl(caFile string) *HttpServer {
 	return s
 }
 
-func (s *HttpServer) Run(logger *utilLogger.Logger) (err error) {
+func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAddr) (err error) {
+	if nil == logger {
+		logger = utilLogger.NewLogger()
+		logger.AddConsoleWriter()
+	}
+
+	if len(addresses) > 0 {
+		s.listenAddresses = append(s.listenAddresses, addresses...)
+	}
+
+	if len(s.listenAddresses) <= 0 {
+		logger.Fatal("listen addresses is empty")
+		return
+	}
 
 	if "" != s.sslVerifyClientCaFile {
 		tlsConfig := &tls.Config{}
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		certPEMBlock, err := os.ReadFile(s.sslVerifyClientCaFile)
 		if err != nil {
+			logger.FatalF("sslVerifyClientCaFile error:%v", err)
 			return err
 		}
 		caPool := x509.NewCertPool()
@@ -67,54 +80,42 @@ func (s *HttpServer) Run(logger *utilLogger.Logger) (err error) {
 		s.server.TLSConfig = tlsConfig
 	}
 
-	servErrorChan := make(chan error, 100)
 	for _, listenAddr := range s.listenAddresses {
 		listenAddr.Network = strings.ToLower(listenAddr.Network)
-		httpListenScheme := listenAddr.Network
 		listener, err := net.Listen(listenAddr.Network, listenAddr.Addr)
 		if nil != err {
-			logger.Fatal(fmt.Sprintf("http server listen %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err))
+			logger.ErrorF("server listen %s://%s , error: %v\n", listenAddr.Network, listenAddr.Addr, err)
 			continue
 		}
 		switch listenAddr.Network {
-		case "tcp", "udp":
-			// 服务连接
-			if "" != s.sslServerCertFile || "" != s.sslServerKeyFile {
-				httpListenScheme = "https"
+		case "tcp":
+			if "" != s.sslServerCertFile && "" != s.sslServerKeyFile {
 				go func() {
-					err1 := s.server.ServeTLS(listener, s.sslServerCertFile, s.sslServerKeyFile)
-					servErrorChan <- fmt.Errorf("http server serv %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err1)
+					err = s.server.ServeTLS(listener, s.sslServerCertFile, s.sslServerKeyFile)
 				}()
 			} else {
-				httpListenScheme = "http"
 				go func() {
-					err1 := s.server.Serve(listener)
-					servErrorChan <- fmt.Errorf("http server serv %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err1)
+					err = s.server.Serve(listener)
 				}()
 
 			}
 			break
 		default:
 			go func() {
-				err1 := s.server.Serve(listener)
-				servErrorChan <- fmt.Errorf("http server serv %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err1)
+				err = s.server.Serve(listener)
 			}()
 			break
 
 		}
 
-		if err != nil && err != http.ErrServerClosed {
-			logger.Fatal(fmt.Sprintf("http server listen %s://%s , error: %v\n", httpListenScheme, listenAddr.Addr, err))
+		if nil != err && err != http.ErrServerClosed {
+			logger.ErrorF("server serv %s://%s , error: %v\n", listenAddr.Network, listenAddr.Addr, err)
 		} else {
-			logger.Info(fmt.Sprintf("http server listen: %s://%s\n", httpListenScheme, listenAddr.Addr))
+			logger.InfoF("server listen: %s://%s\n", listenAddr.Network, listenAddr.Addr)
 		}
 
 	}
 
-	go func() {
-		errServ := <-servErrorChan
-		logger.Fatal(fmt.Sprintf(" %v\n", errServ))
-	}()
 	// 等待中断信号以优雅地关闭服务器（设置 5 秒的超时时间）
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
@@ -124,7 +125,7 @@ func (s *HttpServer) Run(logger *utilLogger.Logger) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Second)
 	defer cancel()
 	if err = s.server.Shutdown(ctx); err != nil {
-		logger.Fatal(fmt.Sprintf("Server Shutdown:", err))
+		logger.FatalF("Server Shutdown: %v", err)
 	}
 	logger.Info("Server exiting")
 	return
