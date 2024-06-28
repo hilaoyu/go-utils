@@ -40,12 +40,6 @@ func (s *HttpServer) SetMaxHeaderBytes(i int) *HttpServer {
 	return s
 }
 
-func (s *HttpServer) UseServerSsl(certFile string, keyFile string) *HttpServer {
-	s.sslServerCertFile = certFile
-	s.sslServerKeyFile = keyFile
-	return s
-}
-
 func (s *HttpServer) VerifyClientSsl(caFile string) *HttpServer {
 	s.sslVerifyClientCaFile = caFile
 	return s
@@ -94,24 +88,14 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 				continue
 			}
 		}
-		switch listenAddr.Network {
-		case "tcp":
-			if "" != s.sslServerCertFile && "" != s.sslServerKeyFile {
-				go func() {
-					err = s.server.ServeTLS(listener, s.sslServerCertFile, s.sslServerKeyFile)
-				}()
-			} else {
-				go func() {
-					err = s.server.Serve(listener)
-				}()
-
-			}
-			break
-		default:
+		if "" != listenAddr.SslServerCertFile && "" != listenAddr.SslServerKeyFile {
+			go func() {
+				err = s.server.ServeTLS(listener, listenAddr.SslServerCertFile, listenAddr.SslServerKeyFile)
+			}()
+		} else {
 			go func() {
 				err = s.server.Serve(listener)
 			}()
-			break
 
 		}
 

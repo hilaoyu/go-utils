@@ -10,17 +10,17 @@ import (
 )
 
 type ServerListenAddr struct {
-	Network string `json:"network,omitempty"`
-	Addr    string `json:"addr,omitempty"`
-	Uid     int    `json:"uid,omitempty"`
-	Gid     int    `json:"gid,omitempty"`
+	Network           string `json:"network,omitempty"`
+	Addr              string `json:"addr,omitempty"`
+	Uid               int    `json:"uid,omitempty"`
+	Gid               int    `json:"gid,omitempty"`
+	SslServerCertFile string `json:"ssl_server_cert_file,omitempty"`
+	SslServerKeyFile  string `json:"ssl_server_key_file,omitempty"`
 }
 
 type HttpServer struct {
 	listenAddresses       []*ServerListenAddr
 	server                *http.Server
-	sslServerCertFile     string
-	sslServerKeyFile      string
 	sslVerifyClientCaFile string
 }
 
