@@ -31,6 +31,7 @@ type HttpClient struct {
 	sslClientCertPemPath    string
 	sslClientCertPemContent []byte
 	sslClientCertPemKey     []byte
+	lastRequestUrl          string
 	lastRequestParams       url.Values
 	lastRespStatusCode      int
 	client                  *http.Client

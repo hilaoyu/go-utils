@@ -107,7 +107,7 @@ func (uh *HttpClient) buildClient() *HttpClient {
 
 func (uh *HttpClient) SetBaseUrl(baseUrl string) *HttpClient {
 	uh.baseUrl = baseUrl
-	return uh.buildClient()
+	return uh
 }
 func (uh *HttpClient) SetTimeout(timeout time.Duration) *HttpClient {
 	uh.timeout = timeout
@@ -131,7 +131,7 @@ func (uh *HttpClient) SetSslVerify(v bool) *HttpClient {
 
 func (uh *HttpClient) BasicAuth(user string, password string) *HttpClient {
 	uh.AddHeader("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password)))))
-	return uh.buildClient()
+	return uh
 }
 
 func (uh *HttpClient) BuildRemoteUrlAndParams(method string, path string) (remoteUrl string, params url.Values, err error) {
@@ -184,39 +184,42 @@ func (uh *HttpClient) AddHeader(k string, v string) *HttpClient {
 	if "" != k {
 		uh.headers[k] = v
 	}
-	return uh.buildClient()
+	return uh
 }
 func (uh *HttpClient) ClearHeader() *HttpClient {
 	uh.headers = map[string]string{}
-	return uh.buildClient()
+	return uh
 }
 
 func (uh *HttpClient) WithParams(params url.Values) *HttpClient {
 	uh.params = params
-	return uh.buildClient()
+	return uh
 }
 func (uh *HttpClient) ClearParams() *HttpClient {
 	uh.params = url.Values{}
-	return uh.buildClient()
+	return uh
 }
 func (uh *HttpClient) WithRawBody(body string) *HttpClient {
 	uh.rawBody = body
-	return uh.buildClient()
+	return uh
 }
 func (uh *HttpClient) ClearRawBody() *HttpClient {
 	uh.rawBody = ""
-	return uh.buildClient()
+	return uh
 }
 
 func (uh *HttpClient) WithEncryptData(data map[string]interface{}) *HttpClient {
 	uh.needEncData = data
-	return uh.buildClient()
+	return uh
 }
 func (uh *HttpClient) ClearEncryptData() *HttpClient {
 	uh.needEncData = map[string]interface{}{}
-	return uh.buildClient()
+	return uh
 }
 
+func (uh *HttpClient) GetLastRequestUrl() string {
+	return uh.lastRequestUrl
+}
 func (uh *HttpClient) GetLastRespStatusCode() int {
 	return uh.lastRespStatusCode
 }
@@ -253,6 +256,7 @@ func (uh *HttpClient) Request(method string, path string, additionalHeaders map[
 		req.Header.Set(hk, hv)
 	}
 	//godump.Dump(req)
+	uh.lastRequestUrl = remoteUrl
 	uh.lastRequestParams = params
 	return uh.client.Do(req)
 }
@@ -404,6 +408,13 @@ func (uh *HttpClient) DownloadFile(path string, headers map[string]string) (body
 	if resp.StatusCode != 200 {
 		body = []byte("")
 	}
+
+	return
+}
+
+func (uh *HttpClient) SignRequest(secret string, method string, path string, params url.Values, additionalHeaders map[string]string) (resp *http.Response, err error) {
+	params = SignRequestParams(secret, params)
+	resp, err = uh.WithParams(params).Request(method, path, additionalHeaders)
 
 	return
 }
