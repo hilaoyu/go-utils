@@ -7,6 +7,12 @@ import (
 	"os"
 )
 
+func ReadString(path string) (str string, err error) {
+
+	data, err := os.ReadFile(path)
+	str = string(data)
+	return
+}
 func ReadJSON(path string, v interface{}) error {
 	var (
 		data []byte

@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-type MongodbClient struct {
-	client        *mongo.Client
+type MongodbClientConf struct {
 	Host          string
 	DbName        string
 	User          string
@@ -18,92 +17,55 @@ type MongodbClient struct {
 	LoggerOptions *options.LoggerOptions
 }
 
-var defaultMongodbClient = &MongodbClient{}
-
-func NewMongodbClient(host string, dbName string, user string, password string, loggerOptions ...*options.LoggerOptions) *MongodbClient {
-	c := &MongodbClient{
-		client:   nil,
-		Host:     host,
-		DbName:   dbName,
-		User:     user,
-		Password: password,
-	}
-
-	if len(loggerOptions) > 0 {
-		c.LoggerOptions = loggerOptions[0]
-	}
-
-	return c
-}
-func SetDefaultConfig(host string, dbName string, user string, password string, loggerOptions ...*options.LoggerOptions) error {
-	defaultMongodbClient = NewMongodbClient(host, dbName, user, password, loggerOptions...)
-	return defaultMongodbClient.Connect()
+type MongodbClient struct {
+	*mongo.Database
+	utilConf *MongodbClientConf
 }
 
-func GetDefaultClient() *MongodbClient {
-	/*if nil != defaultMongodbClient.Connect() {
-		return nil
-	}*/
-	return defaultMongodbClient
-}
+func NewMongodbClient(conf *MongodbClientConf) (client *MongodbClient, err error) {
 
-func (mc *MongodbClient) Connect() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOk := false
-	if nil != mc.client {
-		if nil == mc.client.Ping(context.TODO(), nil) {
-			clientOk = true
-		}
+	clientOpts := []*options.ClientOptions{options.Client().SetHosts([]string{conf.Host})}
+	if "" != conf.User {
+		clientOpts = append(clientOpts, options.Client().SetAuth(options.Credential{
+			//AuthMechanism:           "",
+			//AuthMechanismProperties: nil,
+			AuthSource: conf.DbName,
+			Username:   conf.User,
+			Password:   conf.Password,
+			//PasswordSet:             false,
+		}))
 	}
-	if !clientOk {
-		clientOpts := []*options.ClientOptions{options.Client().SetHosts([]string{mc.Host})}
-		if "" != mc.User {
-			clientOpts = append(clientOpts, options.Client().SetAuth(options.Credential{
-				//AuthMechanism:           "",
-				//AuthMechanismProperties: nil,
-				AuthSource: mc.DbName,
-				Username:   mc.User,
-				Password:   mc.Password,
-				//PasswordSet:             false,
-			}))
-		}
-		if nil != mc.LoggerOptions {
-			clientOpts = append(clientOpts, options.Client().SetLoggerOptions(mc.LoggerOptions))
-		}
-
-		clientNew, err := mongo.Connect(ctx, clientOpts...)
-		if nil != err {
-			return fmt.Errorf("连接失败 %+v", err)
-
-		}
-		mc.client = clientNew
+	if nil != conf.LoggerOptions {
+		clientOpts = append(clientOpts, options.Client().SetLoggerOptions(conf.LoggerOptions))
 	}
-	return nil
-}
 
-func (mc *MongodbClient) Ping() error {
-	return mc.Connect()
-}
-
-func (mc *MongodbClient) Collection(collection string) (*mongo.Collection, error) {
-	err := mc.Connect()
+	c, err := mongo.Connect(ctx, clientOpts...)
 	if nil != err {
-		return nil, err
+		return
 	}
 
-	return mc.client.Database(mc.DbName).Collection(collection), nil
+	client = &MongodbClient{
+		Database: c.Database(conf.DbName),
+		utilConf: conf,
+	}
+
+	return
 }
 
-func (mc *MongodbClient) CreateIndexes(collectionName string, indexModels []mongo.IndexModel) error {
-	collection, err := mc.Collection(collectionName)
-	if nil != err {
-		return err
-	}
+func (mc *MongodbClient) New() (client *MongodbClient, err error) {
+	client, err = NewMongodbClient(mc.utilConf)
+	return
+}
+
+func (mc *MongodbClient) CollectionCreateIndexes(collectionName string, indexModels []mongo.IndexModel) (err error) {
+	collection := mc.Collection(collectionName)
+
 	indexView := collection.Indexes()
 	if MongodbHasIndexes(indexView) {
-		return nil
+		return
 	}
 
 	opts := options.CreateIndexes().SetMaxTime(2 * time.Second)
@@ -111,6 +73,151 @@ func (mc *MongodbClient) CreateIndexes(collectionName string, indexModels []mong
 	if err != nil {
 		return fmt.Errorf("创建索引失败 %+v", err)
 	}
+	return
+}
+
+func (mc *MongodbClient) CollectionInsertOne(collectionName string, data interface{}) (id string, err error) {
+	collection := mc.Collection(collectionName)
+	cur, err := collection.InsertOne(context.TODO(), data)
+	if err != nil {
+		err = fmt.Errorf("保存失败 %+v", err)
+		return
+	}
+
+	id, _ = cur.InsertedID.(string)
+
+	return
+}
+
+func (mc *MongodbClient) CollectionInsertMany(collectionName string, data []interface{}) (ids []string, err error) {
+	collection := mc.Collection(collectionName)
+	cur, err := collection.InsertMany(context.TODO(), data)
+	if err != nil {
+		err = fmt.Errorf("保存失败 %+v", err)
+		return
+	}
+
+	for _, id := range cur.InsertedIDs {
+		if idStr, ok := id.(string); ok {
+			ids = append(ids, idStr)
+		}
+	}
+
+	return
+}
+
+func (mc *MongodbClient) CollectionUpdate(collectionName string, filter interface{}, update interface{}) (count int64, err error) {
+	collection := mc.Collection(collectionName)
+
+	updateResult, err := collection.UpdateMany(context.TODO(), filter, update)
+	if err != nil {
+		return 0, fmt.Errorf("更新失败 %+v", err)
+	}
+
+	return updateResult.MatchedCount, nil
+}
+
+func (mc *MongodbClient) CollectionFind(collectionName string, filter interface{}, sort interface{}, result interface{}) (err error) {
+	collection := mc.Collection(collectionName)
+
+	opts := []*options.FindOptions{options.Find().SetSort(sort), options.Find().SetLimit(1)}
+
+	cur, err := collection.Find(context.Background(), filter, opts...)
+	if err != nil {
+		return fmt.Errorf("查询失败 %+v", err)
+	}
+
+	defer cur.Close(context.Background())
+
+	if err = cur.Err(); err != nil {
+
+		return fmt.Errorf("查询出错 %+v", err)
+	}
+
+	if cur.TryNext(context.TODO()) {
+		err = cur.Decode(result)
+		if err != nil {
+			return fmt.Errorf("解析数据错误 %+v", err)
+		}
+	}
+
+	return nil
+}
+
+func (mc *MongodbClient) CollectionSelect(collectionName string, filter interface{}, sort interface{}, limit int64, offset int64, results interface{}, total *int64) (err error) {
+	collection := mc.Collection(collectionName)
+	opts := []*options.FindOptions{options.Find().SetSkip(offset)}
+	if nil != sort {
+		opts = append(opts, options.Find().SetSort(sort))
+	}
+	if limit > 0 {
+		opts = append(opts, options.Find().SetLimit(limit))
+	}
+	cur, err := collection.Find(context.Background(), filter, opts...)
+	if err != nil {
+		return fmt.Errorf("查询失败 %+v", err)
+	}
+
+	defer cur.Close(context.Background())
+
+	if err = cur.Err(); err != nil {
+
+		return fmt.Errorf("返回错误 %+v", err)
+	}
+	err = cur.All(context.Background(), results)
+	if err != nil {
+		return fmt.Errorf("解析数据错误 %+v", err)
+	}
+
+	if nil != total {
+		totalNum, _ := collection.CountDocuments(context.Background(), filter)
+		*total = totalNum
+	}
+
+	return nil
+}
+func (mc *MongodbClient) CollectionDelete(collectionName string, filter interface{}) (count int64, err error) {
+	collection := mc.Collection(collectionName)
+
+	cur, err := collection.DeleteMany(context.Background(), filter)
+	if err != nil {
+		err = fmt.Errorf("查询失败 %+v", err)
+		return
+	}
+
+	count = cur.DeletedCount
+
+	return
+}
+
+func (mc *MongodbClient) CollectionAggregate(collectionName string, group bson.D, filter interface{}, sort interface{}, results interface{}) error {
+	collection := mc.Collection(collectionName)
+	pipeline := mongo.Pipeline{}
+
+	if nil != filter {
+		pipeline = append(pipeline, bson.D{bson.E{"$match", filter}})
+	}
+	if nil != group {
+		pipeline = append(pipeline, bson.D{bson.E{"$group", group}})
+	}
+	if nil != sort {
+		pipeline = append(pipeline, bson.D{bson.E{"$sort", sort}})
+	}
+
+	/**/
+
+	cursor, err := collection.Aggregate(context.Background(), pipeline)
+
+	if err != nil {
+		return fmt.Errorf("查询错误 %+v", err)
+	}
+
+	defer cursor.Close(context.Background())
+
+	if err = cursor.All(context.Background(), results); nil != err {
+		return fmt.Errorf("解析数据错误 %+v", err)
+	}
+
 	return nil
 }
 
@@ -135,173 +242,4 @@ func MongodbHasIndexes(indexView mongo.IndexView) (found bool) {
 		}
 	}
 	return
-}
-
-func (mc *MongodbClient) InsertOne(collectionName string, data interface{}) (id string, err error) {
-	collection, err := mc.Collection(collectionName)
-	if nil != err {
-		return
-	}
-	cur, err := collection.InsertOne(context.TODO(), data)
-	if err != nil {
-		err = fmt.Errorf("保存失败 %+v", err)
-		return
-	}
-
-	id, _ = cur.InsertedID.(string)
-
-	return
-}
-
-func (mc *MongodbClient) InsertMany(collectionName string, data []interface{}) (ids []string, err error) {
-	collection, err := mc.Collection(collectionName)
-	if nil != err {
-		return
-	}
-	cur, err := collection.InsertMany(context.TODO(), data)
-	if err != nil {
-		err = fmt.Errorf("保存失败 %+v", err)
-		return
-	}
-
-	for _, id := range cur.InsertedIDs {
-		if idStr, ok := id.(string); ok {
-			ids = append(ids, idStr)
-		}
-	}
-
-	return
-}
-
-func (mc *MongodbClient) Update(collectionName string, filter interface{}, update interface{}) (count int64, err error) {
-	collection, err := mc.Collection(collectionName)
-	if nil != err {
-		return 0, err
-	}
-
-	updateResult, err := collection.UpdateMany(context.TODO(), filter, update)
-	if err != nil {
-		return 0, fmt.Errorf("更新失败 %+v", err)
-	}
-
-	return updateResult.MatchedCount, nil
-}
-
-func (mc *MongodbClient) Find(collection string, filter interface{}, sort interface{}, result interface{}) (err error) {
-	db, err := mc.Collection(collection)
-	if nil != err {
-		return err
-	}
-
-	opts := []*options.FindOptions{options.Find().SetSort(sort), options.Find().SetLimit(1)}
-
-	cur, err := db.Find(context.Background(), filter, opts...)
-	if err != nil {
-		return fmt.Errorf("查询失败 %+v", err)
-	}
-
-	defer cur.Close(context.Background())
-
-	if err = cur.Err(); err != nil {
-
-		return fmt.Errorf("查询出错 %+v", err)
-	}
-
-	if cur.TryNext(context.TODO()) {
-		err = cur.Decode(result)
-		if err != nil {
-			return fmt.Errorf("解析数据错误 %+v", err)
-		}
-	}
-
-	return nil
-}
-
-func (mc *MongodbClient) Select(collection string, filter interface{}, sort interface{}, limit int64, offset int64, results interface{}, total *int64) (err error) {
-	db, err := mc.Collection(collection)
-	if nil != err {
-		return err
-	}
-
-	opts := []*options.FindOptions{options.Find().SetSkip(offset)}
-	if nil != sort {
-		opts = append(opts, options.Find().SetSort(sort))
-	}
-	if limit > 0 {
-		opts = append(opts, options.Find().SetLimit(limit))
-	}
-	cur, err := db.Find(context.Background(), filter, opts...)
-	if err != nil {
-		return fmt.Errorf("查询失败 %+v", err)
-	}
-
-	defer cur.Close(context.Background())
-
-	if err = cur.Err(); err != nil {
-
-		return fmt.Errorf("返回错误 %+v", err)
-	}
-	err = cur.All(context.Background(), results)
-	if err != nil {
-		return fmt.Errorf("解析数据错误 %+v", err)
-	}
-
-	if nil != total {
-		totalNum, _ := db.CountDocuments(context.Background(), filter)
-		*total = totalNum
-	}
-
-	return nil
-}
-func (mc *MongodbClient) Delete(collection string, filter interface{}, count *int64) (err error) {
-	db, err := mc.Collection(collection)
-	if nil != err {
-		return err
-	}
-
-	cur, err := db.DeleteMany(context.Background(), filter)
-	if err != nil {
-		return fmt.Errorf("查询失败 %+v", err)
-	}
-
-	if nil != count {
-		countNum := cur.DeletedCount
-		count = &countNum
-	}
-
-	return nil
-}
-
-func (mc *MongodbClient) Aggregate(collection string, group bson.D, filter interface{}, sort interface{}, results interface{}) error {
-	db, err := mc.Collection(collection)
-	if nil != err {
-		return err
-	}
-	pipeline := mongo.Pipeline{}
-
-	if nil != filter {
-		pipeline = append(pipeline, bson.D{bson.E{"$match", filter}})
-	}
-	if nil != group {
-		pipeline = append(pipeline, bson.D{bson.E{"$group", group}})
-	}
-	if nil != sort {
-		pipeline = append(pipeline, bson.D{bson.E{"$sort", sort}})
-	}
-
-	/**/
-
-	cursor, err := db.Aggregate(context.Background(), pipeline)
-
-	if err != nil {
-		return fmt.Errorf("查询错误 %+v", err)
-	}
-
-	defer cursor.Close(context.Background())
-
-	if err = cursor.All(context.Background(), results); nil != err {
-		return fmt.Errorf("解析数据错误 %+v", err)
-	}
-
-	return nil
 }

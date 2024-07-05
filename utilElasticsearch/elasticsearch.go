@@ -14,7 +14,7 @@ import (
 )
 
 type ElasticsearchClient struct {
-	client *elastic.Client
+	*elastic.Client
 	config *ElasticsearchClientConfig
 }
 
@@ -76,7 +76,7 @@ func NewElasticsearchClient(conf *ElasticsearchClientConfig) (esClient *Elastics
 	}
 
 	esClient = &ElasticsearchClient{
-		client: c,
+		Client: c,
 		config: conf,
 	}
 
@@ -84,13 +84,18 @@ func NewElasticsearchClient(conf *ElasticsearchClientConfig) (esClient *Elastics
 
 }
 
+func (esClient *ElasticsearchClient) New() (newClient *ElasticsearchClient, err error) {
+	newClient, err = NewElasticsearchClient(esClient.config)
+
+	return
+}
 func (esClient *ElasticsearchClient) GetMap(indexName string) (mapping string, err error) {
 	if "" == indexName {
 		err = fmt.Errorf("indexName 不能为空")
 		return
 	}
 
-	mappingResult, err := esClient.client.GetMapping().Index(indexName).Do(context.Background())
+	mappingResult, err := esClient.GetMapping().Index(indexName).Do(context.Background())
 	if err != nil {
 		err = fmt.Errorf("查询mapping失败: index: %s ,err: %+v", indexName, err)
 		return
@@ -129,7 +134,7 @@ func (esClient *ElasticsearchClient) SetMap(indexName string, mapping string) (e
 		return
 	}
 
-	exists, err := esClient.client.IndexExists(indexName).Do(context.Background())
+	exists, err := esClient.IndexExists(indexName).Do(context.Background())
 	if err != nil {
 		err = fmt.Errorf("查询index失败: index: %s ,err: %+v", indexName, err)
 		return
@@ -144,7 +149,7 @@ func (esClient *ElasticsearchClient) SetMap(indexName string, mapping string) (e
     },
     "mappings": ` + mapping + `
 }`
-		createIndex, err1 := esClient.client.CreateIndex(indexName).BodyString(mapping).Do(context.Background())
+		createIndex, err1 := esClient.CreateIndex(indexName).BodyString(mapping).Do(context.Background())
 		if err1 != nil {
 			err = fmt.Errorf(errFormat, "创建", indexName, err1)
 			return
@@ -156,7 +161,7 @@ func (esClient *ElasticsearchClient) SetMap(indexName string, mapping string) (e
 		return
 	}
 
-	putResp, err := esClient.client.PutMapping().Index(indexName).BodyString(mapping).Do(context.TODO())
+	putResp, err := esClient.PutMapping().Index(indexName).BodyString(mapping).Do(context.TODO())
 	if err != nil {
 		err = fmt.Errorf(errFormat, "更新", indexName, err)
 		return
@@ -180,13 +185,13 @@ func (esClient *ElasticsearchClient) SaveData(indexName string, data []interface
 		return
 	}
 
-	bulkRequest := esClient.client.Bulk()
+	bulkRequest := esClient.Bulk()
 
 	for _, item := range data {
 		bulkRequest = bulkRequest.Add(elastic.NewBulkIndexRequest().Index(indexName).Doc(item))
 	}
 
-	bulk_total := bulkRequest.NumberOfActions()
+	bulkTotal := bulkRequest.NumberOfActions()
 
 	bulkResponse, err := bulkRequest.Do(context.TODO())
 	errFormat := "保存失败: index: %s ,err: %+v "
@@ -202,7 +207,7 @@ func (esClient *ElasticsearchClient) SaveData(indexName string, data []interface
 	//godump.Dump(bulkResponse)
 
 	if bulkRequest.NumberOfActions() > 0 {
-		err = fmt.Errorf(errFormat, indexName, fmt.Errorf("没有全部完成,总提交: %d 个,有 %d 个没成功", bulk_total, bulkRequest.NumberOfActions()))
+		err = fmt.Errorf(errFormat, indexName, fmt.Errorf("没有全部完成,总提交: %d 个,有 %d 个没成功", bulkTotal, bulkRequest.NumberOfActions()))
 		return
 	}
 
@@ -219,6 +224,34 @@ func (esClient *ElasticsearchClient) SaveData(indexName string, data []interface
 	//fmt.Println(bulk_total,bulkRequest.NumberOfActions())
 	return
 }
+func (esClient *ElasticsearchClient) Update(indexName string, filter *QueryFilter, script *elastic.Script) (count int64, err error) {
+
+	if "" == indexName {
+		err = fmt.Errorf("indexName 不能为空")
+		return
+	}
+
+	result, err := esClient.UpdateByQuery().Index(indexName).Query(filter).Script(script).Do(context.Background())
+	count = result.Updated
+	return
+}
+
+func (esClient *ElasticsearchClient) Delete(indexName string, filter *QueryFilter) (count int64, err error) {
+
+	if "" == indexName {
+		err = fmt.Errorf("indexName 不能为空")
+		return
+	}
+
+	result, err := esClient.DeleteByQuery().
+		Index(indexName).
+		Query(filter).
+		Do(context.Background())
+
+	count = result.Deleted
+
+	return
+}
 
 func (esClient *ElasticsearchClient) Select(results interface{}, indexName string, filter *QueryFilter, sort map[string]bool, limit int64, offset int64, lastSort *QueryLastSort) (total int64, err error) {
 	item, err := utils.MakeInstanceFromSlice(results)
@@ -230,7 +263,7 @@ func (esClient *ElasticsearchClient) Select(results interface{}, indexName strin
 		matchAllSource, _ := matchAll.Source()
 		filter = &QueryFilter{QuerySource: matchAllSource}
 	}
-	request := esClient.client.Search().
+	request := esClient.Search().
 		TrackTotalHits(true).
 		Index(indexName). // search in index "twitter"
 		Query(filter).    // specify the query
@@ -279,7 +312,7 @@ func (esClient *ElasticsearchClient) Select(results interface{}, indexName strin
 }
 func (esClient *ElasticsearchClient) Aggregate(indexName string, group map[string]elastic.Aggregation, filter elastic.Query) (searchResult *elastic.SearchResult, err error) {
 
-	request := esClient.client.Search().
+	request := esClient.Search().
 		TrackTotalHits(true).
 		Index(indexName). // search in index "twitter"
 		Query(filter).    // specify the query
