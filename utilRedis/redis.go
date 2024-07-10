@@ -9,11 +9,18 @@ import (
 	"time"
 )
 
+const ErrRedisNil = redis.Nil
+
 type RedisClient struct {
 	*redis.Client
 	ctx         context.Context
 	lockManager *redsync.Redsync
 }
+
+var (
+	syncLockersCache = map[string]*redsync.Mutex{}
+	redisCtx         = context.Background()
+)
 
 func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int, poolConnections int) (rc *RedisClient, err error) {
 	if poolConnections < 1 {
@@ -31,9 +38,13 @@ func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int
 	}
 	c := redis.NewClient(&opts)
 
+	err = c.Ping(redisCtx).Err()
+	if nil != err {
+		return
+	}
 	rc = &RedisClient{
 		Client: c,
-		ctx:    context.Background(),
+		ctx:    redisCtx,
 	}
 	return
 }
@@ -43,20 +54,35 @@ func (rc *RedisClient) GetLocker(key string, duration time.Duration, tries int) 
 	if "" == key {
 		return
 	}
-	if nil == rc.lockManager {
-		rc.lockManager = redsync.New(goredis.NewPool(rc.Client))
-	}
 	lockerName := "utilRedisLock_" + key
-	locker = rc.lockManager.NewMutex(lockerName, redsync.WithExpiry(duration), redsync.WithTries(tries))
+
+	locker, ok := syncLockersCache[lockerName]
+	if !ok {
+		if nil == rc.lockManager {
+			rc.lockManager = redsync.New(goredis.NewPool(rc.Client))
+		}
+		locker = rc.lockManager.NewMutex(lockerName)
+		syncLockersCache[lockerName] = locker
+	}
+	if duration > 0 {
+		redsync.WithExpiry(duration).Apply(locker)
+	}
+	if tries > 0 {
+		redsync.WithTries(tries).Apply(locker)
+	}
+
 	return
 }
 
-func (rc *RedisClient) TryLock(key string, duration time.Duration, tries int) error {
-	return rc.GetLocker(key, duration, tries).TryLock()
+func (rc *RedisClient) TryLock(key string, duration time.Duration) error {
+	return rc.GetLocker(key, duration, 1).TryLock()
 }
 func (rc *RedisClient) Lock(key string, duration time.Duration, tries int) error {
 	return rc.GetLocker(key, duration, tries).Lock()
 }
-func (rc *RedisClient) Unlock(key string, duration time.Duration, tries int) (bool, error) {
-	return rc.GetLocker(key, duration, tries).Unlock()
+func (rc *RedisClient) Unlock(key string) (bool, error) {
+	return rc.GetLocker(key, 0, 1).Unlock()
+}
+func (rc *RedisClient) Extend(key string, duration time.Duration) (bool, error) {
+	return rc.GetLocker(key, duration, 1).Extend()
 }

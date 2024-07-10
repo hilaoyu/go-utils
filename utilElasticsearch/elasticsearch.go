@@ -18,6 +18,11 @@ type ElasticsearchClient struct {
 	config *ElasticsearchClientConfig
 }
 
+type ElasticsearchMapping struct {
+	Settings interface{} `json:"settings"`
+	Mappings interface{} `json:"mappings"`
+}
+
 type esErrorLogger struct{}
 type esInfoLogger struct{}
 
@@ -142,13 +147,6 @@ func (esClient *ElasticsearchClient) SetMap(indexName string, mapping string) (e
 
 	errFormat := "%s mapping 错误: index:%s ,err: %+v "
 	if !exists {
-		mapping = `{
-    "settings": {
-        "number_of_shards": 1,
-        "number_of_replicas": 1
-    },
-    "mappings": ` + mapping + `
-}`
 		createIndex, err1 := esClient.CreateIndex(indexName).BodyString(mapping).Do(context.Background())
 		if err1 != nil {
 			err = fmt.Errorf(errFormat, "创建", indexName, err1)
@@ -161,7 +159,16 @@ func (esClient *ElasticsearchClient) SetMap(indexName string, mapping string) (e
 		return
 	}
 
-	putResp, err := esClient.PutMapping().Index(indexName).BodyString(mapping).Do(context.TODO())
+	tempMap := &ElasticsearchMapping{}
+	err = json.Unmarshal([]byte(mapping), tempMap)
+	if nil != err {
+		return
+	}
+	tempMapMappings, err := json.Marshal(tempMap.Mappings)
+	if nil != err {
+		return
+	}
+	putResp, err := esClient.PutMapping().Index(indexName).BodyString(string(tempMapMappings)).Do(context.TODO())
 	if err != nil {
 		err = fmt.Errorf(errFormat, "更新", indexName, err)
 		return

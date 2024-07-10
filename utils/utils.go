@@ -79,8 +79,19 @@ func EachMapSort(eachMap interface{}, eachFunc interface{}) error {
 }
 
 func ReTry(callback func() bool, times int, step time.Duration) {
-	for i := 0; i < times; i++ {
+	forever := false
+	if times <= 0 {
+		forever = true
+		times = 1
+	}
+	for {
 		if callback() {
+			return
+		}
+		if !forever {
+			times--
+		}
+		if times <= 0 {
 			return
 		}
 		time.Sleep(step)
