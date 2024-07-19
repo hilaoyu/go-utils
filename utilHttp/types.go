@@ -53,11 +53,19 @@ type HttpClient struct {
 	logger *utilLogger.Logger
 }
 
-type ApiReturnJson struct {
+type ApiDataJson struct {
 	Status  bool        `json:"status"`
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Errors  []string    `json:"errors"`
 	Debug   []string    `json:"debug,omitempty"`
 	Data    interface{} `json:"data"`
+}
+
+type ApiDataSelectOption struct {
+	Key      interface{} `json:"key,omitempty"`
+	Label    string      `json:"label,omitempty"`
+	Value    interface{} `json:"value,omitempty"`
+	Selected bool        `json:"selected,omitempty"`
+	Disabled bool        `json:"disabled,omitempty"`
 }

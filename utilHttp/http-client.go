@@ -291,7 +291,7 @@ func (uh *HttpClient) RequestJson(v interface{}, method string, path string, add
 
 func (uh *HttpClient) RequestJsonApiAndDecode(v interface{}, method string, path string, additionalHeaders map[string]string) (err error) {
 
-	apiReturn := &ApiReturnJson{}
+	apiReturn := &ApiDataJson{}
 	err = uh.RequestJson(apiReturn, method, path, additionalHeaders)
 	if nil != err {
 		return

@@ -1,10 +1,17 @@
 package utilOrm
 
 import (
+	"github.com/hilaoyu/go-utils/utilStr"
 	"github.com/hilaoyu/go-utils/utilUuid"
 	"gorm.io/gorm"
 	"time"
 )
+
+type OrmModel interface {
+	GetPrimaryKey() string
+	GetPrimaryKeyFiledName() string
+	GetPrimaryKeyFiledNameSnake() string
+}
 
 type OrmModelGormBase struct {
 	Id        string    `gorm:"primaryKey" json:"id,omitempty"`
@@ -19,4 +26,14 @@ func (om *OrmModelGormBase) BeforeCreate(tx *gorm.DB) (err error) {
 		om.Id = utilUuid.UuidGenerate()
 	}
 	return nil
+}
+
+func (om *OrmModelGormBase) GetPrimaryKey() string {
+	return om.Id
+}
+func (om *OrmModelGormBase) GetPrimaryKeyFiledName() string {
+	return "Id"
+}
+func (om *OrmModelGormBase) GetPrimaryKeyFiledNameSnake() string {
+	return utilStr.SnakeString(om.GetPrimaryKeyFiledName())
 }

@@ -46,61 +46,72 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 
 }
 
-func (o *UtilGorm) Debug(debug bool) *UtilGorm {
+func (ug *UtilGorm) Debug(debug bool) *UtilGorm {
 	if debug {
-		o.orm = o.orm.Session(&gorm.Session{
-			Logger: o.orm.Logger.LogMode(logger.Info),
+		ug.orm = ug.orm.Session(&gorm.Session{
+			Logger: ug.orm.Logger.LogMode(logger.Info),
 		})
 	} else {
-		o.orm = o.orm.Session(&gorm.Session{
-			Logger: o.orm.Logger.LogMode(logger.Error),
+		ug.orm = ug.orm.Session(&gorm.Session{
+			Logger: ug.orm.Logger.LogMode(logger.Error),
 		})
 	}
-	return o
+	return ug
 }
-func (o *UtilGorm) Raw(sql string, values ...interface{}) (err error) {
-	result := o.orm.Raw(sql, values...)
+
+func (ug *UtilGorm) Clauses(conds ...clause.Expression) *UtilGorm {
+	ug.orm = ug.orm.Clauses(conds...)
+	return ug
+}
+
+func (ug *UtilGorm) Scopes(funcs ...func(*gorm.DB) *gorm.DB) *UtilGorm {
+	ug.orm = ug.orm.Scopes(funcs...)
+	return ug
+}
+
+func (ug *UtilGorm) Raw(sql string, values ...interface{}) (err error) {
+	result := ug.orm.Raw(sql, values...)
 	err = result.Error
 	return
 }
 
-func (o *UtilGorm) Clauses(conds ...clause.Expression) *UtilGorm {
-	o.orm = o.orm.Clauses(conds...)
-	return o
+func (ug *UtilGorm) Where(query interface{}, args ...interface{}) *UtilGorm {
+	ug.orm = ug.orm.Where(query, args...)
+	return ug
 }
-func (o *UtilGorm) Where(query interface{}, args ...interface{}) *UtilGorm {
-	o.orm = o.orm.Where(query, args...)
-	return o
-}
-
-func (o *UtilGorm) Begin(opts ...*sql.TxOptions) (err error) {
-	o.orm = o.orm.Begin(opts...)
-	err = o.orm.Error
-	return
-}
-func (o *UtilGorm) Commit() (err error) {
-	o.orm = o.orm.Commit()
-	err = o.orm.Error
-	return
-}
-func (o *UtilGorm) Rollback() (err error) {
-	o.orm = o.orm.Rollback()
-	err = o.orm.Error
-	return
-}
-func (o *UtilGorm) SavePoint(name string) (err error) {
-	o.orm = o.orm.SavePoint(name)
-	err = o.orm.Error
-	return
-}
-func (o *UtilGorm) RollbackTo(name string) (err error) {
-	o.orm = o.orm.RollbackTo(name)
-	err = o.orm.Error
-	return
+func (ug *UtilGorm) WithRelate(query string, args ...interface{}) *UtilGorm {
+	ug.orm = ug.orm.Preload(query, args...)
+	return ug
 }
 
-func (o *UtilGorm) TableQuery(tableName string, orderBy *[]string, args ...interface{}) *OrmQuery {
-	q := o.orm.Table(tableName, args...)
+func (ug *UtilGorm) Begin(opts ...*sql.TxOptions) (err error) {
+	ug.orm = ug.orm.Begin(opts...)
+	err = ug.orm.Error
+	return
+}
+func (ug *UtilGorm) Commit() (err error) {
+	ug.orm = ug.orm.Commit()
+	err = ug.orm.Error
+	return
+}
+func (ug *UtilGorm) Rollback() (err error) {
+	ug.orm = ug.orm.Rollback()
+	err = ug.orm.Error
+	return
+}
+func (ug *UtilGorm) SavePoint(name string) (err error) {
+	ug.orm = ug.orm.SavePoint(name)
+	err = ug.orm.Error
+	return
+}
+func (ug *UtilGorm) RollbackTo(name string) (err error) {
+	ug.orm = ug.orm.RollbackTo(name)
+	err = ug.orm.Error
+	return
+}
+
+func (ug *UtilGorm) TableQuery(tableName string, orderBy *[]string, args ...interface{}) *GormQuery {
+	q := ug.orm.Table(tableName, args...)
 
 	if nil != orderBy {
 		for _, orderItem := range *orderBy {
@@ -108,24 +119,39 @@ func (o *UtilGorm) TableQuery(tableName string, orderBy *[]string, args ...inter
 		}
 
 	}
-	return &OrmQuery{orm: q}
+	return &GormQuery{orm: q}
 }
-func (o *UtilGorm) ModelQuery(model interface{}, orderBy *[]string) *OrmQuery {
-	q := o.orm.Model(model)
-
+func (ug *UtilGorm) ModelQuery(model interface{}, orderBy *[]string) *GormQuery {
+	q := ug.orm.Model(model)
 	if nil != orderBy {
 		for _, orderItem := range *orderBy {
 			q = q.Order(orderItem)
 		}
 
 	}
-	return &OrmQuery{orm: q}
+	return &GormQuery{orm: q}
 }
 
-func (o *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ...interface{}) (err error) {
+func (ug *UtilGorm) TableName(table string) (name string) {
+	name = ug.orm.NamingStrategy.TableName(table)
+	return
+}
+func (ug *UtilGorm) ModelTableName(model interface{}) (name string) {
+	t := reflect.TypeOf(model)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	name = ug.TableName(t.Name())
+	return
+}
+
+func (ug *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ...interface{}) (err error) {
 	relatedValue := utils.GetInterfaceFiledValue(model, related)
 	if !relatedValue.IsValid() {
 		err = fmt.Errorf("关联关系错误")
+		return
+	}
+	if !relatedValue.IsZero() {
 		return
 	}
 
@@ -139,7 +165,7 @@ func (o *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ...
 
 	//fmt.Println("related err", related, nil == v)
 	//continue
-	qr := o.ModelQuery(model, nil).orm.Association(related)
+	qr := ug.ModelQuery(model, nil).orm.Association(related)
 	err = qr.Find(v, conds...)
 
 	if nil != err {
@@ -156,19 +182,26 @@ func (o *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ...
 	}
 	return
 }
-func (o *UtilGorm) ModelRelatedAppend(model interface{}, related string, values ...interface{}) (err error) {
-	err = o.ModelQuery(model, nil).orm.Association(related).Append(values...)
+func (ug *UtilGorm) ModelRelatedAppend(model interface{}, related string, values ...interface{}) (err error) {
+	err = ug.ModelQuery(model, nil).orm.Association(related).Append(values...)
 	return
 }
-func (o *UtilGorm) ModelRelatedReplace(model interface{}, related string, values ...interface{}) (err error) {
-	err = o.ModelQuery(model, nil).orm.Association(related).Replace(values...)
+func (ug *UtilGorm) ModelRelatedReplace(model interface{}, related string, values ...interface{}) (err error) {
+	err = ug.ModelQuery(model, nil).orm.Association(related).Replace(values...)
 	return
 }
-func (o *UtilGorm) ModelRelatedDelete(model interface{}, related string, values ...interface{}) (err error) {
-	err = o.ModelQuery(model, nil).orm.Association(related).Delete(values...)
+func (ug *UtilGorm) ModelRelatedDelete(model interface{}, related string, values ...interface{}) (err error) {
+	err = ug.ModelQuery(model, nil).orm.Association(related).Delete(values...)
 	return
 }
-func (o *UtilGorm) ModelRelatedClear(model interface{}, related string) (err error) {
-	err = o.ModelQuery(model, nil).orm.Association(related).Clear()
+func (ug *UtilGorm) ModelRelatedClear(model interface{}, related string) (err error) {
+	err = ug.ModelQuery(model, nil).orm.Association(related).Clear()
 	return
+}
+
+func (ug *UtilGorm) Clone() *UtilGorm {
+	tmp := &UtilGorm{
+		orm: ug.orm.Scopes(),
+	}
+	return tmp
 }
