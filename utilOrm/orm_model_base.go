@@ -35,5 +35,5 @@ func (om *OrmModelGormBase) GetPrimaryKeyFiledName() string {
 	return "Id"
 }
 func (om *OrmModelGormBase) GetPrimaryKeyFiledNameSnake() string {
-	return utilStr.SnakeString(om.GetPrimaryKeyFiledName())
+	return utilStr.ToSnake(om.GetPrimaryKeyFiledName())
 }
