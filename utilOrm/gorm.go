@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -30,6 +31,7 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 			//NameReplacer:  nil,
 			//NoLowerCase:   false,
 		},
+		Logger: logger.Default,
 	})
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
@@ -37,9 +39,6 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 	}
 
 	db = db.Omit(clause.Associations)
-	db = db.Session(&gorm.Session{
-		Logger: db.Logger.LogMode(logger.Error),
-	})
 
 	utilOrm = &UtilGorm{orm: db}
 	return
@@ -48,13 +47,9 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 
 func (ug *UtilGorm) Debug(debug bool) *UtilGorm {
 	if debug {
-		ug.orm = ug.orm.Session(&gorm.Session{
-			Logger: ug.orm.Logger.LogMode(logger.Info),
-		})
+		ug.orm.Logger = ug.orm.Logger.LogMode(logger.Info)
 	} else {
-		ug.orm = ug.orm.Session(&gorm.Session{
-			Logger: ug.orm.Logger.LogMode(logger.Error),
-		})
+		ug.orm.Logger = ug.orm.Logger.LogMode(logger.Error)
 	}
 	return ug
 }
@@ -75,6 +70,12 @@ func (ug *UtilGorm) Raw(sql string, values ...interface{}) (err error) {
 	return
 }
 
+func (ug *UtilGorm) Session(config *gorm.Session) *UtilGorm {
+	if nil == config {
+		config = &gorm.Session{}
+	}
+	return &UtilGorm{orm: ug.orm.Session(config)}
+}
 func (ug *UtilGorm) Select(query interface{}, args ...interface{}) *UtilGorm {
 	ug.orm = ug.orm.Select(query, args...)
 	return ug
@@ -169,13 +170,41 @@ func (ug *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ..
 
 	//fmt.Println("related err", related, nil == v)
 	//continue
-	qr := ug.ModelQuery(model, nil).orm.Association(related)
-	err = qr.Find(v, conds...)
+	//qr := ug.Clone().ModelQuery(model, nil).orm.Association(related)
+	//err = qr.Find(v, conds...)
 
-	fmt.Println(related, " : RowsAffected :", ug.orm.Statement.RowsAffected)
-	if nil != err || (reflect.Struct == t.Kind() && ug.orm.Statement.RowsAffected <= 0) {
-		if reflect.DeepEqual(err, gorm.ErrRecordNotFound) {
-			err = nil
+	association := ug.Clone().ModelQuery(model, nil).orm.Association(related)
+	var (
+		queryConds = association.Relationship.ToQueryConditions(association.DB.Statement.Context, association.DB.Statement.ReflectValue)
+		modelValue = reflect.New(association.Relationship.FieldSchema.ModelType).Interface()
+		tx         = association.DB.Model(modelValue)
+	)
+
+	if association.Relationship.JoinTable != nil {
+		if !tx.Statement.Unscoped && len(association.Relationship.JoinTable.QueryClauses) > 0 {
+			joinStmt := gorm.Statement{DB: tx, Context: tx.Statement.Context, Schema: association.Relationship.JoinTable, Table: association.Relationship.JoinTable.Table, Clauses: map[string]clause.Clause{}}
+			for _, queryClause := range association.Relationship.JoinTable.QueryClauses {
+				joinStmt.AddClause(queryClause)
+			}
+			joinStmt.Build("WHERE")
+			if len(joinStmt.SQL.String()) > 0 {
+				tx.Clauses(clause.Expr{SQL: strings.Replace(joinStmt.SQL.String(), "WHERE ", "", 1), Vars: joinStmt.Vars})
+			}
+		}
+
+		tx = tx.Session(&gorm.Session{QueryFields: true}).Clauses(clause.From{Joins: []clause.Join{{
+			Table: clause.Table{Name: association.Relationship.JoinTable.Table},
+			ON:    clause.Where{Exprs: queryConds},
+		}}})
+	} else {
+		tx.Clauses(clause.Where{Exprs: queryConds})
+	}
+	result := tx.Find(v, conds...)
+
+	//fmt.Println(related, reflect.Struct == t.Kind(), " : RowsAffected :", result.RowsAffected)
+	if nil != result.Error || result.RowsAffected <= 0 {
+		if !reflect.DeepEqual(result.Error, gorm.ErrRecordNotFound) {
+			err = result.Error
 		}
 		return
 	}
@@ -205,8 +234,5 @@ func (ug *UtilGorm) ModelRelatedClear(model interface{}, related string) (err er
 }
 
 func (ug *UtilGorm) Clone() *UtilGorm {
-	tmp := &UtilGorm{
-		orm: ug.orm.Scopes(),
-	}
-	return tmp
+	return ug.Session(nil)
 }
