@@ -75,6 +75,10 @@ func (ug *UtilGorm) Raw(sql string, values ...interface{}) (err error) {
 	return
 }
 
+func (ug *UtilGorm) Select(query interface{}, args ...interface{}) *UtilGorm {
+	ug.orm = ug.orm.Select(query, args...)
+	return ug
+}
 func (ug *UtilGorm) Where(query interface{}, args ...interface{}) *UtilGorm {
 	ug.orm = ug.orm.Where(query, args...)
 	return ug
@@ -168,7 +172,8 @@ func (ug *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ..
 	qr := ug.ModelQuery(model, nil).orm.Association(related)
 	err = qr.Find(v, conds...)
 
-	if nil != err {
+	fmt.Println(related, " : RowsAffected :", ug.orm.Statement.RowsAffected)
+	if nil != err || (reflect.Struct == t.Kind() && ug.orm.Statement.RowsAffected <= 0) {
 		if reflect.DeepEqual(err, gorm.ErrRecordNotFound) {
 			err = nil
 		}
