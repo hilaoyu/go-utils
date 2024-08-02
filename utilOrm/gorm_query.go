@@ -18,9 +18,14 @@ func (q *GormQuery) WithPager(p *utilHttp.Paginator) *GormQuery {
 	q.pager = p
 	return q
 }
+
 func (q *GormQuery) WithRelate(query string, args ...interface{}) *GormQuery {
 	q.orm = q.orm.Preload(query, args...)
 
+	return q
+}
+func (q *GormQuery) IncludeDeleted() *GormQuery {
+	q.orm = q.orm.Unscoped()
 	return q
 }
 
@@ -134,6 +139,12 @@ func (q *GormQuery) Update(data interface{}) (err error) {
 }
 
 func (q *GormQuery) Delete(model interface{}, conds ...interface{}) (err error) {
+	result := q.orm.Unscoped().Delete(model, conds...)
+	err = result.Error
+	return
+}
+
+func (q *GormQuery) SoftDelete(model interface{}, conds ...interface{}) (err error) {
 	result := q.orm.Delete(model, conds...)
 	err = result.Error
 	return

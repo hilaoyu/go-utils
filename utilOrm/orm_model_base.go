@@ -14,10 +14,10 @@ type OrmModel interface {
 }
 
 type OrmModelGormBase struct {
-	Id        string    `gorm:"primaryKey" json:"id,omitempty" form:"id"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at" form:"-"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime:nano" json:"updated_at" form:"-"`
-	//DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
+	Id        string         `gorm:"primaryKey" json:"id,omitempty" form:"id"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at" form:"-"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime:nano" json:"updated_at" form:"-"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
 }
 
 func (om *OrmModelGormBase) BeforeCreate(tx *gorm.DB) (err error) {

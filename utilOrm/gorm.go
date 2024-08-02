@@ -80,6 +80,10 @@ func (ug *UtilGorm) Select(query interface{}, args ...interface{}) *UtilGorm {
 	ug.orm = ug.orm.Select(query, args...)
 	return ug
 }
+func (ug *UtilGorm) IncludeDeleted() *UtilGorm {
+	ug.orm = ug.orm.Unscoped()
+	return ug
+}
 func (ug *UtilGorm) Where(query interface{}, args ...interface{}) *UtilGorm {
 	ug.orm = ug.orm.Where(query, args...)
 	return ug
