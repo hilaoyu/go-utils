@@ -54,6 +54,10 @@ func (ug *UtilGorm) Debug(debug bool) *UtilGorm {
 	return ug
 }
 
+func (ug *UtilGorm) Original() *gorm.DB {
+	return ug.orm
+}
+
 func (ug *UtilGorm) Clauses(conds ...clause.Expression) *UtilGorm {
 	ug.orm = ug.orm.Clauses(conds...)
 	return ug

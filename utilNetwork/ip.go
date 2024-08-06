@@ -12,3 +12,20 @@ func IsPublicIP(ip net.IP) bool {
 	}
 	return true
 }
+
+func IpInCidr(ip string, cidr string) bool {
+	if "" == ip || "" == cidr {
+		return false
+	}
+	ipParse := net.ParseIP(ip)
+	_, netParse, err := net.ParseCIDR(cidr)
+	if nil != err {
+		return false
+	}
+
+	if netParse.Contains(ipParse) {
+		return true
+	}
+
+	return false
+}
