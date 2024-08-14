@@ -133,7 +133,7 @@ func (q *GormQuery) Save(model interface{}) (err error) {
 }
 
 func (q *GormQuery) Update(data interface{}) (err error) {
-	result := q.orm.Updates(data)
+	result := q.orm.Select("*").Updates(data)
 	err = result.Error
 	return
 }
