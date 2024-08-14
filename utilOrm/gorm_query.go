@@ -133,7 +133,8 @@ func (q *GormQuery) Save(model interface{}) (err error) {
 }
 
 func (q *GormQuery) Update(data interface{}) (err error) {
-	result := q.orm.Select("*").Updates(data)
+	omits := append(q.orm.Statement.Omits, "created_at")
+	result := q.orm.Select("*").Omit(omits...).Updates(data)
 	err = result.Error
 	return
 }
