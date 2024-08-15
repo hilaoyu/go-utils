@@ -80,8 +80,8 @@ func (q *GormQuery) Distinct(args ...interface{}) *GormQuery {
 	return q
 }
 
-func (q *GormQuery) Count(count *int64) (err error) {
-	result := q.orm.Count(count)
+func (q *GormQuery) Count() (count int64, err error) {
+	result := q.orm.Count(&count)
 	err = result.Error
 	return
 }
@@ -92,7 +92,7 @@ func (q *GormQuery) Find(models interface{}, conds ...interface{}) (err error) {
 		return
 	}
 	if nil != q.pager {
-		q.Count(&q.pager.Total)
+		q.pager.Total, _ = q.Count()
 	}
 	return
 }
