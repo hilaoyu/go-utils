@@ -164,14 +164,16 @@ func (ug *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ..
 		err = fmt.Errorf("关联关系错误")
 		return
 	}
-	if !relatedValue.IsZero() {
-		return
-	}
 
 	t := relatedValue.Type()
 	isPtr := t.Kind() == reflect.Ptr
 	if isPtr {
 		t = t.Elem()
+	}
+
+	if t.Kind() == reflect.Struct && !relatedValue.IsZero() {
+		err = fmt.Errorf("IsZero")
+		return
 	}
 
 	v := reflect.New(t).Interface()
@@ -243,4 +245,8 @@ func (ug *UtilGorm) ModelRelatedClear(model interface{}, related string) (err er
 
 func (ug *UtilGorm) Clone() *UtilGorm {
 	return ug.Session(nil)
+}
+
+func ErrorIsOrmNotFound(err error) bool {
+	return reflect.DeepEqual(err, gorm.ErrRecordNotFound)
 }
