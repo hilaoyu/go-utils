@@ -144,6 +144,9 @@ func (ug *UtilGorm) ModelQuery(model interface{}, orderBy *[]string) *GormQuery 
 	}
 	return &GormQuery{orm: q}
 }
+func (ug *UtilGorm) ModelRead(model interface{}) error {
+	return ug.ModelQuery(model, nil).First(model)
+}
 func (ug *UtilGorm) ModelSave(model interface{}) error {
 	return ug.ModelQuery(model, nil).Save(model)
 }
