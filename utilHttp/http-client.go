@@ -32,6 +32,7 @@ func NewHttpClient(baseUrl string, timeout ...time.Duration) (uh *HttpClient) {
 		sslClientCertPemContent: nil,
 		sslClientCertPemKey:     nil,
 		client:                  nil,
+		params:                  url.Values{},
 	}
 	if len(timeout) > 0 {
 		uh.timeout = timeout[0]
@@ -144,8 +145,8 @@ func (uh *HttpClient) BuildRemoteUrlAndParams(method string, path string) (remot
 	params = uh.params
 	if nil != uh.aesEncryptor {
 
-		needEncData := uh.needEncData
-		if len(needEncData) > 0 {
+		if nil != uh.needEncData {
+			needEncData := uh.needEncData
 			needEncData["_timestamp"] = time.Now().UTC().Unix()
 			needEncData["_data_id"] = strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
 			enData, err1 := uh.aesEncryptor.Encrypt(needEncData)
@@ -281,7 +282,7 @@ func (uh *HttpClient) RequestJson(v interface{}, method string, path string, add
 	if err != nil {
 		return
 	}
-	//fmt.Println(string(body))
+	fmt.Println(string(body))
 	err = json.Unmarshal(body, &v)
 	if err != nil {
 		return

@@ -144,6 +144,12 @@ func (ug *UtilGorm) ModelQuery(model interface{}, orderBy *[]string) *GormQuery 
 	}
 	return &GormQuery{orm: q}
 }
+func (ug *UtilGorm) ModelSave(model interface{}) error {
+	return ug.ModelQuery(model, nil).Save(model)
+}
+func (ug *UtilGorm) ModelDelete(model interface{}) error {
+	return ug.ModelQuery(model, nil).Delete(model)
+}
 
 func (ug *UtilGorm) TableName(table string) (name string) {
 	name = ug.orm.NamingStrategy.TableName(table)
