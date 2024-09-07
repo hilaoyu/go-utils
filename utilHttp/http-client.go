@@ -200,6 +200,13 @@ func (uh *HttpClient) ClearParams() *HttpClient {
 	uh.params = url.Values{}
 	return uh
 }
+func (uh *HttpClient) WithJsonData(data interface{}) *HttpClient {
+	jsonByte, err := json.Marshal(data)
+	if nil == err {
+		uh.WithRawBody(string(jsonByte))
+	}
+	return uh
+}
 func (uh *HttpClient) WithRawBody(body string) *HttpClient {
 	uh.rawBody = body
 	return uh
@@ -278,11 +285,15 @@ func (uh *HttpClient) RequestPlain(method string, path string, additionalHeaders
 
 func (uh *HttpClient) RequestJson(v interface{}, method string, path string, additionalHeaders map[string]string) (err error) {
 
+	if nil == additionalHeaders {
+		additionalHeaders = map[string]string{}
+	}
+	additionalHeaders["Content-Type"] = "application/json"
+	additionalHeaders["X-Requested-With"] = "XMLHttpRequest"
 	body, err := uh.RequestPlain(method, path, additionalHeaders)
 	if err != nil {
 		return
 	}
-	fmt.Println(string(body))
 	err = json.Unmarshal(body, &v)
 	if err != nil {
 		return
