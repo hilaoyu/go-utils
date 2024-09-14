@@ -205,6 +205,7 @@ func (uh *HttpClient) WithJsonData(data interface{}) *HttpClient {
 	if nil == err {
 		uh.WithRawBody(string(jsonByte))
 	}
+	uh.AddHeader("Content-Type","application/json")
 	return uh
 }
 func (uh *HttpClient) WithRawBody(body string) *HttpClient {
@@ -288,7 +289,6 @@ func (uh *HttpClient) RequestJson(v interface{}, method string, path string, add
 	if nil == additionalHeaders {
 		additionalHeaders = map[string]string{}
 	}
-	additionalHeaders["Content-Type"] = "application/json"
 	additionalHeaders["X-Requested-With"] = "XMLHttpRequest"
 	body, err := uh.RequestPlain(method, path, additionalHeaders)
 	if err != nil {
@@ -312,13 +312,16 @@ func (uh *HttpClient) RequestJsonApiAndDecode(v interface{}, method string, path
 		err = fmt.Errorf("code: %d ,message: %s ,errors: %+v ", apiReturn.Code, apiReturn.Message, apiReturn.Errors)
 		return
 	}
-	if enStr, ok := apiReturn.Data.(string); ok {
-		err = uh.aesEncryptor.Decrypt(enStr, &v)
-		if nil != err {
-			return
+	if nil != v {
+		if enStr, ok := apiReturn.Data.(string); ok {
+			err = uh.aesEncryptor.Decrypt(enStr, &v)
+			if nil != err {
+				return
+			}
+		} else {
+			err = fmt.Errorf("返回数据的data字段不是加密字符串")
 		}
-	} else {
-		err = fmt.Errorf("返回数据的data字段不是加密字符串")
+
 	}
 
 	return

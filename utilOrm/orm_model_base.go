@@ -15,7 +15,7 @@ type OrmModel interface {
 
 type OrmModelGormBase struct {
 	Id        string         `gorm:"primaryKey" json:"id,omitempty" form:"id"`
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at" form:"-"`
+	CreatedAt time.Time      `gorm:"autoCreateTime;<-:create" json:"created_at" form:"-"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime:nano" json:"updated_at" form:"-"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
 }
