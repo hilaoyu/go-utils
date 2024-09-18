@@ -181,7 +181,7 @@ func (ug *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ..
 	}
 
 	if t.Kind() == reflect.Struct && !relatedValue.IsZero() {
-		err = fmt.Errorf("IsZero")
+		//err = fmt.Errorf("IsZero")
 		return
 	}
 
