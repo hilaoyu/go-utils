@@ -179,3 +179,12 @@ func ReverseBits(b byte) byte {
 
 	return byte(reverse[int(b)])
 }
+
+func SliceShift[S ~[]E, E any](s S) (e E, a S) {
+	if len(s) <= 0 {
+		return
+	}
+	e = s[0]
+	a = s[1:]
+	return
+}
