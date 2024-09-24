@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"time"
 )
@@ -180,11 +181,34 @@ func ReverseBits(b byte) byte {
 	return byte(reverse[int(b)])
 }
 
-func SliceShift[S ~[]E, E any](s S) (e E, a S) {
-	if len(s) <= 0 {
+func SliceShift[S ~*[]E, E any](s S) (e E) {
+	if len(*s) <= 0 {
 		return
 	}
-	e = s[0]
-	a = s[1:]
+	e = (*s)[0]
+	*s = (*s)[1:]
 	return
+}
+func SlicePop[S ~*[]E, E any](s S) (e E) {
+	sl := len(*s)
+	if sl <= 0 {
+		return
+	}
+	e = (*s)[sl-1]
+	*s = (*s)[:sl-1]
+	return
+}
+
+func SliceFind[S ~[]E, E any](s S, f func(E) bool) (e E) {
+	i := slices.IndexFunc(s, f)
+	if i >= 0 {
+		e = s[i]
+	}
+	return
+}
+func SliceContains[S ~[]E, E any](s S, e E) bool {
+	i := slices.IndexFunc(s, func(f E) bool {
+		return reflect.DeepEqual(f, e)
+	})
+	return i >= 0
 }

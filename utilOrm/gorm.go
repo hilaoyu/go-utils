@@ -180,11 +180,6 @@ func (ug *UtilGorm) ModelRelatedLoad(model interface{}, related string, conds ..
 		t = t.Elem()
 	}
 
-	if t.Kind() == reflect.Struct && !relatedValue.IsZero() {
-		//err = fmt.Errorf("IsZero")
-		return
-	}
-
 	v := reflect.New(t).Interface()
 
 	//fmt.Println("related err", related, nil == v)
