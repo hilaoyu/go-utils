@@ -10,6 +10,7 @@ import (
 	"github.com/hilaoyu/go-utils/utilStr"
 	"github.com/hilaoyu/go-utils/utils"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -287,6 +288,56 @@ func FormatSize(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f%c", float64(b)/float64(div), "KMGTPE"[exp])
+}
+func SizeStringToNumber(sizeStr string, unit ...string) (size int64, err error) {
+	sizeStr = strings.ToLower(sizeStr)
+	formatUnit := ""
+	if len(unit) > 0 {
+		formatUnit = unit[0]
+	}
+	formatUnit = strings.ToLower(formatUnit)
+	quantity := float64(1)
+
+	regSize, _ := regexp.Compile(`^([\d\.]+)(\w*)$`)
+	ret := regSize.FindStringSubmatch(sizeStr)
+	if len(ret) < 3 {
+		err = fmt.Errorf("%s is not a vaild size", sizeStr)
+		return
+	}
+	sizeStr = ret[1]
+	quantityStr := ret[2]
+	quantity, err = strconv.ParseFloat(sizeStr, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	unitMultipliers := map[string]float64{
+		"k":  1024,
+		"kb": 1024,
+		"m":  1024 * 1024,
+		"mb": 1024 * 1024,
+		"g":  1024 * 1024 * 1024,
+		"gb": 1024 * 1024 * 1024,
+		"t":  1024 * 1024 * 1024 * 1024,
+		"tb": 1024 * 1024 * 1024 * 1024,
+		"p":  1024 * 1024 * 1024 * 1024 * 1024,
+		"pb": 1024 * 1024 * 1024 * 1024 * 1024,
+		"e":  1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+		"eb": 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+	}
+
+	var multiplier float64 = 1
+	if tmp, ok := unitMultipliers[quantityStr]; ok {
+		multiplier = tmp
+	}
+	var unitMultiplier float64 = 1
+	if "" != formatUnit {
+		if tmp, ok := unitMultipliers[formatUnit]; ok {
+			unitMultiplier = tmp
+		}
+	}
+	size = int64(math.Ceil(quantity * multiplier / unitMultiplier))
+	return
 }
 
 func Md5(file string) (fileMd5 string, err error) {
