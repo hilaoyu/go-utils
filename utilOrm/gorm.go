@@ -1,9 +1,12 @@
 package utilOrm
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"fmt"
+	std_ck "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/hilaoyu/go-utils/utils"
+	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -24,6 +27,57 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 	//fmt.Println(dsn)
 	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		SkipDefaultTransaction: true,
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix:   tablePrefix,
+			SingularTable: true,
+			//NameReplacer:  nil,
+			//NoLowerCase:   false,
+		},
+		Logger: logger.Default,
+	})
+	if err != nil {
+		err = fmt.Errorf("连接数据库失败, error: %+v", err)
+		return
+	}
+
+	db = db.Omit(clause.Associations)
+
+	utilOrm = &UtilGorm{orm: db}
+	return
+
+}
+
+func NewUtilGormClickHouse(host string, port int, user string, password string, dbName string, tablePrefix string, timeout time.Duration, useSsl ...bool) (utilOrm *UtilGorm, err error) {
+	dbOption := &std_ck.Options{
+		Addr: []string{fmt.Sprintf("%s:%d", host, port)},
+		Auth: std_ck.Auth{
+			Database: dbName,
+			Username: user,
+			Password: password,
+		},
+		Settings: std_ck.Settings{
+			"max_execution_time": 60,
+		},
+		DialTimeout: timeout,
+		Compression: &std_ck.Compression{
+			Method: std_ck.CompressionLZ4,
+			Level:  3,
+		},
+		//Debug: true,
+	}
+	if len(useSsl) > 0 && useSsl[0] {
+		dbOption.TLS = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
+
+	clickhouseDb := std_ck.OpenDB(dbOption)
+
+	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
+	db, err := gorm.Open(clickhouse.New(clickhouse.Config{
+		Conn: clickhouseDb,
+	}), &gorm.Config{
 		SkipDefaultTransaction: true,
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   tablePrefix,
