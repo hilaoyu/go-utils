@@ -21,10 +21,11 @@ const (
 )
 
 type Logger struct {
-	logger     *zerolog.Logger
-	writers    []io.Writer
-	logLevel   int
-	timeFormat string
+	logger      *zerolog.Logger
+	writers     []io.Writer
+	logLevel    int
+	timeFormat  string
+	levelWriter io.Writer
 }
 
 var defaultLogger *Logger
@@ -154,14 +155,18 @@ func (l *Logger) AddFileRotationWriter(dir string, name string, maxBackups int, 
 	return
 }
 
+func (l *Logger) GetLevelWriter() io.Writer {
+	return l.levelWriter
+}
+
 func (l *Logger) Init(force bool) *Logger {
 	if "" == l.timeFormat {
 		l.timeFormat = utilTime.GetTimeFormat()
 	}
 	zerolog.TimeFieldFormat = l.timeFormat
 	if force || nil == l.logger {
-		mw := zerolog.MultiLevelWriter(l.writers...)
-		logger := zerolog.New(mw).With().
+		l.levelWriter = zerolog.MultiLevelWriter(l.writers...)
+		logger := zerolog.New(l.levelWriter).With().
 			Timestamp().
 			Logger()
 

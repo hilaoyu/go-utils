@@ -1,10 +1,13 @@
 package utilHttp
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"github.com/hilaoyu/go-utils/utilLogger"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -12,6 +15,30 @@ import (
 	"strings"
 	"time"
 )
+
+type FilteringLogger struct {
+	logger         *utilLogger.Logger
+	excludeStrings []string
+}
+
+func (fl FilteringLogger) Write(b []byte) (n int, err error) {
+	for _, excludeString := range fl.excludeStrings {
+		if bytes.Index(b, []byte(excludeString)) > -1 {
+			// Filter out the line that matches the pattern
+			return len(b), nil
+		}
+	}
+	fl.logger.Error(string(b))
+	n = len(b)
+	return
+}
+
+func NewFilteringWriter(logger *utilLogger.Logger, excludeStrings ...string) *FilteringLogger {
+	return &FilteringLogger{
+		logger:         logger,
+		excludeStrings: excludeStrings,
+	}
+}
 
 func NewHttpServe(handler http.Handler, addresses ...*ServerListenAddr) (s *HttpServer) {
 	s = &HttpServer{server: &http.Server{Handler: handler}, listenAddresses: addresses}
@@ -50,6 +77,14 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 		logger = utilLogger.NewLogger()
 		logger.AddConsoleWriter()
 	}
+	s.server.ErrorLog = log.New(
+		NewFilteringWriter(
+			logger,
+			"http: TLS handshake error",
+		),
+		"http serv: ",
+		log.LstdFlags,
+	)
 
 	if len(addresses) > 0 {
 		s.listenAddresses = append(s.listenAddresses, addresses...)
@@ -74,47 +109,67 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 		s.server.TLSConfig = tlsConfig
 	}
 
+	var listeners []net.Listener
+	quit := make(chan os.Signal)
 	for _, listenAddr := range s.listenAddresses {
 		listenAddr.Network = strings.ToLower(listenAddr.Network)
-		listener, err := net.Listen(listenAddr.Network, listenAddr.Addr)
+		var listener net.Listener
+		listener, err = net.Listen(listenAddr.Network, listenAddr.Addr)
 		if nil != err {
 			logger.ErrorF("server listen %s://%s , error: %v\n", listenAddr.Network, listenAddr.Addr, err)
 			continue
 		}
+		listeners = append(listeners, listener)
+
 		if "unix" == listenAddr.Network && listenAddr.Uid > 0 && listenAddr.Gid > 0 {
 			if err = os.Chown(listenAddr.Addr, listenAddr.Uid, listenAddr.Gid); err != nil {
-				logger.ErrorF("server listen %s://%s , Chmod error: %v\n", listenAddr.Network, listenAddr.Addr, err)
-				listener.Close()
-				continue
+				err = fmt.Errorf("server listen %s://%s , Chmod error: %v\n", listenAddr.Network, listenAddr.Addr, err)
+				quit <- os.Interrupt
 			}
 		}
 		if "" != listenAddr.SslServerCertFile && "" != listenAddr.SslServerKeyFile {
+			logger.InfoF("server serv Tls: %s://%s\n", listenAddr.Network, listenAddr.Addr)
 			go func() {
 				err = s.server.ServeTLS(listener, listenAddr.SslServerCertFile, listenAddr.SslServerKeyFile)
+				if nil != err {
+					err = fmt.Errorf("server serv TLS : %s://%s ,errpr: %v", listenAddr.Network, listenAddr.Addr, err)
+					quit <- os.Interrupt
+				}
 			}()
 		} else {
+			logger.InfoF("server serv : %s://%s\n", listenAddr.Network, listenAddr.Addr)
 			go func() {
 				err = s.server.Serve(listener)
+				err = fmt.Errorf("server serv : %s://%s ,errpr: %v", listenAddr.Network, listenAddr.Addr, err)
+				quit <- os.Interrupt
 			}()
 
 		}
 
 		if nil != err && err != http.ErrServerClosed {
-			logger.ErrorF("server serv %s://%s , error: %v\n", listenAddr.Network, listenAddr.Addr, err)
-		} else {
-			logger.InfoF("server listen: %s://%s\n", listenAddr.Network, listenAddr.Addr)
+			logger.ErrorF("%v\n", err)
 		}
 
 	}
 
 	// 等待中断信号以优雅地关闭服务器（设置 5 秒的超时时间）
-	quit := make(chan os.Signal)
+
 	signal.Notify(quit, os.Interrupt)
 	<-quit
+	if nil != err {
+		logger.ErrorF("%v\n", err)
+	}
 	logger.Info("Shutdown Server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Second)
-	defer cancel()
+	defer func() {
+		for _, listener := range listeners {
+			if nil != listener {
+				listener.Close()
+			}
+		}
+		cancel()
+	}()
 	if err = s.server.Shutdown(ctx); err != nil {
 		logger.FatalF("Server Shutdown: %v", err)
 	}
