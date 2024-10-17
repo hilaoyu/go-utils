@@ -84,8 +84,6 @@ func EachMapSort(eachMap interface{}, eachFunc interface{}) error {
 func ReTry(callback func() bool, times int, step time.Duration) {
 	forever := false
 	if times <= 0 {
-		times = 1
-	} else if times == 0 {
 		forever = true
 		times = 1
 	}

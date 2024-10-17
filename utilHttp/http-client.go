@@ -205,7 +205,7 @@ func (uh *HttpClient) WithJsonData(data interface{}) *HttpClient {
 	if nil == err {
 		uh.WithRawBody(string(jsonByte))
 	}
-	uh.AddHeader("Content-Type","application/json")
+	uh.AddHeader("Content-Type", "application/json")
 	return uh
 }
 func (uh *HttpClient) WithRawBody(body string) *HttpClient {
@@ -298,6 +298,24 @@ func (uh *HttpClient) RequestJson(v interface{}, method string, path string, add
 	if err != nil {
 		return
 	}
+	return
+}
+
+func (uh *HttpClient) RequestJsonApi(v interface{}, method string, path string, additionalHeaders map[string]string) (err error) {
+
+	apiReturn := &ApiDataJson{}
+	if nil != v {
+		apiReturn.Data = v
+	}
+	err = uh.RequestJson(apiReturn, method, path, additionalHeaders)
+	if nil != err {
+		return
+	}
+	if !apiReturn.Status {
+		err = fmt.Errorf("code: %d ,message: %s ,errors: %+v ", apiReturn.Code, apiReturn.Message, apiReturn.Errors)
+		return
+	}
+
 	return
 }
 
