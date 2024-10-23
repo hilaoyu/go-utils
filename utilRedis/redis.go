@@ -2,9 +2,11 @@ package utilRedis
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/redis/go-redis/v9"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -49,6 +51,10 @@ func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int
 	return
 }
 
+func (rc *RedisClient) CtxDefault() context.Context {
+	return rc.ctx
+}
+
 func (rc *RedisClient) GetLocker(key string, duration time.Duration, tries int) (locker *redsync.Mutex) {
 	key = strings.TrimSpace(key)
 	if "" == key {
@@ -83,6 +89,41 @@ func (rc *RedisClient) Lock(key string, duration time.Duration, tries int) error
 func (rc *RedisClient) Unlock(key string) (bool, error) {
 	return rc.GetLocker(key, 0, 1).Unlock()
 }
-func (rc *RedisClient) Extend(key string, duration time.Duration) (bool, error) {
+func (rc *RedisClient) LockExtend(key string, duration time.Duration) (bool, error) {
 	return rc.GetLocker(key, duration, 1).Extend()
+}
+
+func (rc *RedisClient) Set(key string, value interface{}, expirations ...time.Duration) (string, error) {
+	expiration := time.Duration(0)
+	if len(expirations) > 0 {
+		expiration = expirations[0]
+	}
+	status := rc.Client.Set(rc.ctx, key, value, expiration)
+	return status.Result()
+}
+
+func (rc *RedisClient) Get(key string) (value interface{}, err error) {
+	status := rc.Client.Get(rc.ctx, key)
+	return status.Result()
+}
+
+func (rc *RedisClient) GetString(key string) (value string, err error) {
+	v, err := rc.Get(key)
+	if nil != err {
+		return
+	}
+
+	tmp, ok := v.(string)
+	if !ok {
+		err = fmt.Errorf("value does not string")
+		return
+	}
+
+	value = tmp
+
+	return
+}
+
+func ErrorIsNil(err error) bool {
+	return reflect.DeepEqual(err, ErrRedisNil)
 }
