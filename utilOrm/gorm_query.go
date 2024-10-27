@@ -124,6 +124,14 @@ func (q *GormQuery) Create(value interface{}) (err error) {
 
 	return
 }
+func (q *GormQuery) CreateInBatches(value interface{}, batchSize int) (err error) {
+
+	result := q.orm.CreateInBatches(value, batchSize)
+
+	err = result.Error
+
+	return
+}
 func (q *GormQuery) Save(model interface{}) (err error) {
 	result := q.orm.Save(model)
 
