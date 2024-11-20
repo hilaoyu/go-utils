@@ -8,6 +8,7 @@ import (
 	"github.com/hilaoyu/go-utils/utils"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
@@ -19,6 +20,30 @@ import (
 
 type UtilGorm struct {
 	orm *gorm.DB
+}
+
+func NewUtilGormSqlite(dsn string, tablePrefix string) (utilOrm *UtilGorm, err error) {
+
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		SkipDefaultTransaction: true,
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix:   tablePrefix,
+			SingularTable: true,
+			//NameReplacer:  nil,
+			//NoLowerCase:   false,
+		},
+		Logger: logger.Default,
+	})
+	if err != nil {
+		err = fmt.Errorf("连接数据库失败, error: %+v", err)
+		return
+	}
+
+	db = db.Omit(clause.Associations)
+
+	utilOrm = &UtilGorm{orm: db}
+	return
+
 }
 
 func NewUtilGormMysql(host string, port int, user string, password string, dbName string, tablePrefix string, timeout time.Duration) (utilOrm *UtilGorm, err error) {

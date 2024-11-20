@@ -15,7 +15,9 @@ type enDataJson struct {
 	Value string `json:"value"`
 }
 type AesEncryptor struct {
-	secret string
+	secret      string
+	iv          []byte
+	cipherBlock cipher.Block
 }
 
 func NewAesEncryptor(secret string) (aesEncryptor *AesEncryptor) {
@@ -28,6 +30,54 @@ func (ae *AesEncryptor) SetSecret(secret string) *AesEncryptor {
 func (ae *AesEncryptor) GetSecret() string {
 	return ae.secret
 }
+func (ae *AesEncryptor) GetCipherBlock() (block cipher.Block, err error) {
+	if nil == ae.cipherBlock {
+		ae.cipherBlock, err = aes.NewCipher([]byte(ae.secret))
+		if nil != err {
+			return
+		}
+	}
+	block = ae.cipherBlock
+	return
+}
+func (ae *AesEncryptor) GetBlockSize() (size int, err error) {
+	block, err := ae.GetCipherBlock()
+	if nil != err {
+		return
+	}
+	size = block.BlockSize()
+	return
+}
+func (ae *AesEncryptor) RandIv() (iv []byte, err error) {
+	length, err := ae.GetBlockSize()
+	if nil != err {
+		return
+	}
+	iv = make([]byte, length)
+	_, err = rand.Reader.Read(iv)
+	return
+}
+
+// aes加密，填充秘钥key的16位，24,32分别对应AES-128, AES-192, or AES-256.
+func (ae *AesEncryptor) EncryptByte(rawData []byte, iv []byte) (enData []byte, err error) {
+	block, err := ae.GetCipherBlock()
+	if nil != err {
+		return
+	}
+
+	/*if nil == iv {
+		iv, err = ae.RandIv()
+		if nil != err {
+			return
+		}
+	}*/
+	rawData = PKCS7Padding(rawData, block.BlockSize())
+	enData = make([]byte, len(rawData))
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(enData, rawData)
+
+	return
+}
 
 func (ae *AesEncryptor) Encrypt(data interface{}) (string, error) {
 	jsonStr, err := json.Marshal(data)
@@ -36,9 +86,13 @@ func (ae *AesEncryptor) Encrypt(data interface{}) (string, error) {
 	}
 	return ae.EncryptString(string(jsonStr))
 }
-func (ae *AesEncryptor) EncryptString(data string) (string, error) {
+func (ae *AesEncryptor) EncryptString(data string) (enStr string, err error) {
 
-	enData, iv, err := AesCBCEncrypt([]byte(data), []byte(ae.secret))
+	iv, err := ae.RandIv()
+	if nil != err {
+		return "", err
+	}
+	enData, err := ae.EncryptByte([]byte(data), iv)
 	if nil != err {
 		return "", fmt.Errorf("aes AesCBCEncrypt error: %+v", err)
 	}
@@ -48,11 +102,35 @@ func (ae *AesEncryptor) EncryptString(data string) (string, error) {
 		Value: base64.StdEncoding.EncodeToString(enData),
 	}
 
-	enStr, err := json.Marshal(enJson)
+	jsonByte, err := json.Marshal(enJson)
 	if nil != err {
-		return "", fmt.Errorf("aes to return json error: %+v", err)
+		err = fmt.Errorf("aes to return json error: %+v", err)
+		return
 	}
-	return base64.StdEncoding.EncodeToString(enStr), err
+	enStr = base64.StdEncoding.EncodeToString(jsonByte)
+	return
+}
+
+func (ae *AesEncryptor) DecryptByte(enData []byte, iv []byte) (deData []byte, err error) {
+	block, err := ae.GetCipherBlock()
+	if nil != err {
+		return
+	}
+	blockSize := block.BlockSize()
+	// CBC mode always works in whole blocks.
+	if len(enData) < aes.BlockSize {
+		err = fmt.Errorf("cipher text must be longer than block size")
+		return
+	} else if len(enData)%blockSize != 0 {
+		err = fmt.Errorf("ciphertext is not a multiple of the block size")
+		return
+	}
+	decryptor := cipher.NewCBCDecrypter(block, iv)
+	deData = make([]byte, len(enData))
+	decryptor.CryptBlocks(deData, enData)
+	deData = PKCS7UnPadding(deData)
+
+	return
 }
 
 func (ae *AesEncryptor) Decrypt(data string, v interface{}) (err error) {
@@ -86,58 +164,10 @@ func (ae *AesEncryptor) DecryptString(data string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("in data iv error: %+v", err)
 	}
-	out, err := AesCbcDecrypt(dataByte, []byte(ae.secret), iv)
+
 	//fmt.Println(out)
+	out, err := ae.DecryptByte(dataByte, iv)
 	return string(out), err
-}
-
-// aes加密，填充秘钥key的16位，24,32分别对应AES-128, AES-192, or AES-256.
-func AesCBCEncrypt(rawData []byte, key []byte) ([]byte, []byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	//填充原文
-	blockSize := block.BlockSize()
-	rawData = PKCS7Padding(rawData, blockSize)
-	//初始向量IV必须是唯一，但不需要保密
-
-	//block大小 16
-	iv := make([]byte, blockSize)
-
-	if _, err := rand.Reader.Read(iv); err != nil {
-		return nil, nil, err
-	}
-	//block大小和初始向量大小一定要一致
-	encrypted := make([]byte, len(rawData))
-	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(encrypted, rawData)
-
-	return encrypted, iv, nil
-}
-
-func AesCbcDecrypt(enData []byte, key []byte, iv []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return make([]byte, 0), fmt.Errorf("key length error: %+v", err)
-	}
-	blockSize := block.BlockSize()
-
-	// CBC mode always works in whole blocks.
-	if len(enData) < aes.BlockSize {
-		panic("cipher text must be longer than block size")
-	} else if len(enData)%blockSize != 0 {
-		panic("ciphertext is not a multiple of the block size")
-	}
-	decrypter := cipher.NewCBCDecrypter(block, iv)
-	deData := make([]byte, len(enData))
-	decrypter.CryptBlocks(deData, enData)
-	deData = PKCS7UnPadding(deData)
-	return deData, nil
-}
-func NullUnPadding(in []byte) []byte {
-	return bytes.TrimRight(in, string([]byte{0}))
 }
 
 func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
