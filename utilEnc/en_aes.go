@@ -128,7 +128,7 @@ func (ae *AesEncryptor) DecryptByte(enData []byte, iv []byte) (deData []byte, er
 	decryptor := cipher.NewCBCDecrypter(block, iv)
 	deData = make([]byte, len(enData))
 	decryptor.CryptBlocks(deData, enData)
-	deData = PKCS7UnPadding(deData)
+	deData, err = PKCS7UnPadding(deData)
 
 	return
 }
@@ -176,8 +176,15 @@ func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
 	return append(ciphertext, padtext...)
 }
 
-func PKCS7UnPadding(data []byte) []byte {
+func PKCS7UnPadding(data []byte) (b []byte, err error) {
 	length := len(data)
 	unpadding := int(data[length-1])
-	return data[:(length - unpadding)]
+	end := length - unpadding
+	if end < 0 {
+		err = fmt.Errorf("unpadding index error")
+		return
+	}
+	b = data[:end]
+
+	return
 }

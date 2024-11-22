@@ -210,3 +210,12 @@ func SliceContains[S ~[]E, E any](s S, e E) bool {
 	})
 	return i >= 0
 }
+
+func SliceFilter[S ~[]E, E any](s S, f func(E) bool) (s1 S) {
+	for _, e := range s {
+		if f(e) {
+			s1 = append(s1, e)
+		}
+	}
+	return
+}
