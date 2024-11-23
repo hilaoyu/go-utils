@@ -1,7 +1,6 @@
 package utilTime
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -40,7 +39,6 @@ func (t *Timer) ExpirationTime() time.Time {
 }
 func (t *Timer) IsExpired() (expired bool) {
 	t.ExpirationTime()
-	fmt.Println("t.expired:", t.expired)
 	return t.expired
 }
 func (t *Timer) Reset(duration time.Duration) {
