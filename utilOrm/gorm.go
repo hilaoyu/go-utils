@@ -325,6 +325,10 @@ func (ug *UtilGorm) ModelRelatedClear(model interface{}, related string) (err er
 	err = ug.ModelQuery(model, nil).orm.Association(related).Clear()
 	return
 }
+func (ug *UtilGorm) AutoMigrate(dst ...interface{}) (err error) {
+	err = ug.orm.AutoMigrate(dst...)
+	return
+}
 
 func (ug *UtilGorm) Clone() *UtilGorm {
 	return ug.Session(nil)
