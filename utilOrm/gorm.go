@@ -13,6 +13,9 @@ import (
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
+	"io"
+	"log"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -32,7 +35,7 @@ func NewUtilGormSqlite(dsn string, tablePrefix string) (utilOrm *UtilGorm, err e
 			//NameReplacer:  nil,
 			//NoLowerCase:   false,
 		},
-		Logger: logger.Default,
+		Logger: newGormLogger(nil),
 	})
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
@@ -59,7 +62,7 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 			//NameReplacer:  nil,
 			//NoLowerCase:   false,
 		},
-		Logger: logger.Default,
+		Logger: newGormLogger(nil),
 	})
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
@@ -110,7 +113,7 @@ func NewUtilGormClickHouse(host string, port int, user string, password string, 
 			//NameReplacer:  nil,
 			//NoLowerCase:   false,
 		},
-		Logger: logger.Default,
+		Logger: newGormLogger(nil),
 	})
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
@@ -124,6 +127,10 @@ func NewUtilGormClickHouse(host string, port int, user string, password string, 
 
 }
 
+func (ug *UtilGorm) SerLoggerWriter(writer io.Writer) *UtilGorm {
+	ug.orm.Logger = newGormLogger(writer)
+	return ug
+}
 func (ug *UtilGorm) Debug(debug bool) *UtilGorm {
 	if debug {
 		ug.orm.Logger = ug.orm.Logger.LogMode(logger.Info)
@@ -336,4 +343,19 @@ func (ug *UtilGorm) Clone() *UtilGorm {
 
 func ErrorIsOrmNotFound(err error) bool {
 	return reflect.DeepEqual(err, gorm.ErrRecordNotFound)
+}
+
+func newGormLogger(writer io.Writer) (l logger.Interface) {
+	prefix := ""
+	if nil == writer {
+		writer = os.Stdout
+		prefix = "\r\n"
+	}
+	l = logger.New(log.New(writer, prefix, log.LstdFlags), logger.Config{
+		SlowThreshold:             200 * time.Millisecond,
+		LogLevel:                  logger.Warn,
+		IgnoreRecordNotFoundError: true,
+		Colorful:                  true,
+	})
+	return
 }

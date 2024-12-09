@@ -21,14 +21,17 @@ type OrmModelGormBase struct {
 }
 
 func (om *OrmModelGormBase) BeforeCreate(tx *gorm.DB) (err error) {
-	//fmt.Println("OrmModelBase BeforeCreate")
+	om.generatePrimaryKey()
+	return nil
+}
+func (om *OrmModelGormBase) generatePrimaryKey() {
 	if "" == om.Id {
 		om.Id = utilUuid.UuidGenerate()
 	}
-	return nil
 }
 
 func (om *OrmModelGormBase) GetPrimaryKey() string {
+	om.generatePrimaryKey()
 	return om.Id
 }
 func (om *OrmModelGormBase) GetPrimaryKeyFiledName() string {

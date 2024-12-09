@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/hilaoyu/go-utils/utilCmd"
 	"github.com/hilaoyu/go-utils/utilStr"
 	"github.com/hilaoyu/go-utils/utils"
@@ -122,6 +123,10 @@ func GetDirSize(p string) int64 {
 	}
 
 	return size
+}
+
+func GetExt(p string) string {
+	return strings.ToLower(strings.Trim(strings.TrimSpace(filepath.Ext(p)), "."))
 }
 
 func GetModTime(path string) (int64, error) {
@@ -339,6 +344,18 @@ func SizeStringToNumber(sizeStr string, unit ...string) (size int64, err error) 
 	size = int64(math.Ceil(quantity * multiplier / unitMultiplier))
 	return
 }
+func RemoveWithGlob(path string) (err error) {
+	files, err := filepath.Glob(path)
+	if err != nil {
+		return
+	}
+	for _, f := range files {
+		if err = os.Remove(f); err != nil {
+			return
+		}
+	}
+	return
+}
 
 func Md5(file string) (fileMd5 string, err error) {
 	pFile, err := os.Open(file)
@@ -353,16 +370,32 @@ func Md5(file string) (fileMd5 string, err error) {
 	return hex.EncodeToString(md5h.Sum(nil)), nil
 
 }
+func Md5FromByte(data []byte) (fileMd5 string, err error) {
+	md5h := md5.New()
+	md5h.Write(data)
+	return hex.EncodeToString(md5h.Sum(nil)), nil
+}
+func Md5FromReader(reader io.Reader) (fileMd5 string, err error) {
+	md5h := md5.New()
+	io.Copy(md5h, reader)
+	return hex.EncodeToString(md5h.Sum(nil)), nil
+}
 
-func RemoveWithGlob(path string) (err error) {
-	files, err := filepath.Glob(path)
-	if err != nil {
-		return
+func Mime(file string) string {
+	mime, err := mimetype.DetectFile(file)
+	if nil != err {
+		return ""
 	}
-	for _, f := range files {
-		if err = os.Remove(f); err != nil {
-			return
-		}
+	return mime.String()
+}
+func MimeFromByte(data []byte) string {
+	mime := mimetype.Detect(data)
+	return mime.String()
+}
+func MimeFromReader(reader io.Reader) string {
+	mime, err := mimetype.DetectReader(reader)
+	if nil != err {
+		return ""
 	}
-	return
+	return mime.String()
 }
