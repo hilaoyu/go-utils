@@ -14,7 +14,7 @@ type OrmModel interface {
 }
 
 type OrmModelGormBase struct {
-	Id        string         `gorm:"primaryKey" json:"id,omitempty" form:"id"`
+	Id        string         `gorm:"primaryKey;size:36" json:"id,omitempty" form:"id"`
 	CreatedAt time.Time      `gorm:"autoCreateTime;<-:create;index:index_created_at" json:"created_at" form:"-"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime:nano;index:index_updated_at" json:"updated_at" form:"-"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
