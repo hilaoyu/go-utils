@@ -25,10 +25,26 @@ type UtilGorm struct {
 	orm *gorm.DB
 }
 
-func NewUtilGormSqlite(dsn string, tablePrefix string) (utilOrm *UtilGorm, err error) {
+func newGormLogger(writer io.Writer) (l logger.Interface) {
+	prefix := ""
+	if nil == writer {
+		writer = os.Stdout
+		prefix = "\r\n"
+	}
+	l = logger.New(log.New(writer, prefix, log.LstdFlags), logger.Config{
+		SlowThreshold:             200 * time.Millisecond,
+		LogLevel:                  logger.Warn,
+		IgnoreRecordNotFoundError: true,
+		Colorful:                  true,
+	})
+	return
+}
 
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		SkipDefaultTransaction: true,
+func newGormConfig(tablePrefix string) *gorm.Config {
+	return &gorm.Config{
+		SkipDefaultTransaction:                   true,
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   tablePrefix,
 			SingularTable: true,
@@ -36,7 +52,12 @@ func NewUtilGormSqlite(dsn string, tablePrefix string) (utilOrm *UtilGorm, err e
 			//NoLowerCase:   false,
 		},
 		Logger: newGormLogger(nil),
-	})
+	}
+}
+
+func NewUtilGormSqlite(dsn string, tablePrefix string) (utilOrm *UtilGorm, err error) {
+
+	db, err := gorm.Open(sqlite.Open(dsn), newGormConfig(tablePrefix))
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
 		return
@@ -54,16 +75,7 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=%s", user, password, host, port, dbName, timeout)
 	//fmt.Println(dsn)
 	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		SkipDefaultTransaction: true,
-		NamingStrategy: schema.NamingStrategy{
-			TablePrefix:   tablePrefix,
-			SingularTable: true,
-			//NameReplacer:  nil,
-			//NoLowerCase:   false,
-		},
-		Logger: newGormLogger(nil),
-	})
+	db, err := gorm.Open(mysql.Open(dsn), newGormConfig(tablePrefix))
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
 		return
@@ -105,16 +117,7 @@ func NewUtilGormClickHouse(host string, port int, user string, password string, 
 	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
 	db, err := gorm.Open(clickhouse.New(clickhouse.Config{
 		Conn: clickhouseDb,
-	}), &gorm.Config{
-		SkipDefaultTransaction: true,
-		NamingStrategy: schema.NamingStrategy{
-			TablePrefix:   tablePrefix,
-			SingularTable: true,
-			//NameReplacer:  nil,
-			//NoLowerCase:   false,
-		},
-		Logger: newGormLogger(nil),
-	})
+	}), newGormConfig(tablePrefix))
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
 		return
@@ -151,6 +154,11 @@ func (ug *UtilGorm) Clauses(conds ...clause.Expression) *UtilGorm {
 
 func (ug *UtilGorm) Scopes(funcs ...func(*gorm.DB) *gorm.DB) *UtilGorm {
 	ug.orm = ug.orm.Scopes(funcs...)
+	return ug
+}
+
+func (ug *UtilGorm) Set(key string, value interface{}) *UtilGorm {
+	ug.orm = ug.orm.Set(key, value)
 	return ug
 }
 
@@ -332,9 +340,13 @@ func (ug *UtilGorm) ModelRelatedClear(model interface{}, related string) (err er
 	err = ug.ModelQuery(model, nil).orm.Association(related).Clear()
 	return
 }
+
 func (ug *UtilGorm) AutoMigrate(dst ...interface{}) (err error) {
 	err = ug.orm.AutoMigrate(dst...)
 	return
+}
+func (ug *UtilGorm) Migrator() gorm.Migrator {
+	return ug.orm.Migrator()
 }
 
 func (ug *UtilGorm) Clone() *UtilGorm {
@@ -343,19 +355,4 @@ func (ug *UtilGorm) Clone() *UtilGorm {
 
 func ErrorIsOrmNotFound(err error) bool {
 	return reflect.DeepEqual(err, gorm.ErrRecordNotFound)
-}
-
-func newGormLogger(writer io.Writer) (l logger.Interface) {
-	prefix := ""
-	if nil == writer {
-		writer = os.Stdout
-		prefix = "\r\n"
-	}
-	l = logger.New(log.New(writer, prefix, log.LstdFlags), logger.Config{
-		SlowThreshold:             200 * time.Millisecond,
-		LogLevel:                  logger.Warn,
-		IgnoreRecordNotFoundError: true,
-		Colorful:                  true,
-	})
-	return
 }
