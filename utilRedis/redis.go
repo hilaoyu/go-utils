@@ -2,7 +2,6 @@ package utilRedis
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/redis/go-redis/v9"
@@ -102,24 +101,17 @@ func (rc *RedisClient) Set(key string, value interface{}, expirations ...time.Du
 	return status.Result()
 }
 
-func (rc *RedisClient) Get(key string) (value interface{}, err error) {
+func (rc *RedisClient) Get(key string) (value string, err error) {
 	status := rc.Client.Get(rc.ctx, key)
+	return status.Result()
+}
+func (rc *RedisClient) GetDel(key string) (value string, err error) {
+	status := rc.Client.GetDel(rc.ctx, key)
 	return status.Result()
 }
 
 func (rc *RedisClient) GetString(key string) (value string, err error) {
-	v, err := rc.Get(key)
-	if nil != err {
-		return
-	}
-
-	tmp, ok := v.(string)
-	if !ok {
-		err = fmt.Errorf("value does not string")
-		return
-	}
-
-	value = tmp
+	value, err = rc.Get(key)
 
 	return
 }
