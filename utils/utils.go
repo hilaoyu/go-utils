@@ -219,3 +219,12 @@ func SliceFilter[S ~[]E, E any](s S, f func(E) bool) (s1 S) {
 	}
 	return
 }
+
+func MapFind[M ~map[K]E, K string | int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64, E any](m M, f func(E, K) bool) (e E, k K) {
+	for k, e := range m {
+		if f(e, k) {
+			return e, k
+		}
+	}
+	return
+}
