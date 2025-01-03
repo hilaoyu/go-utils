@@ -13,30 +13,36 @@ type OrmModel interface {
 	GetPrimaryKeyFiledNameSnake() string
 }
 
+type OrmModelGormBaseOnlyId struct {
+	Id string `gorm:"primaryKey;size:36" json:"id,omitempty" form:"id"`
+}
+type OrmModelGormBaseWithCU struct {
+	OrmModelGormBaseOnlyId
+	CreatedAt time.Time `gorm:"autoCreateTime;<-:create;index:index_created_at" json:"created_at" form:"-"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime:nano;index:index_updated_at" json:"updated_at" form:"-"`
+}
 type OrmModelGormBase struct {
-	Id        string         `gorm:"primaryKey;size:36" json:"id,omitempty" form:"id"`
-	CreatedAt time.Time      `gorm:"autoCreateTime;<-:create;index:index_created_at" json:"created_at" form:"-"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime:nano;index:index_updated_at" json:"updated_at" form:"-"`
+	OrmModelGormBaseWithCU
 	DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
 }
 
-func (om *OrmModelGormBase) BeforeCreate(tx *gorm.DB) (err error) {
+func (om *OrmModelGormBaseOnlyId) BeforeCreate(tx *gorm.DB) (err error) {
 	om.generatePrimaryKey()
 	return nil
 }
-func (om *OrmModelGormBase) generatePrimaryKey() {
+func (om *OrmModelGormBaseOnlyId) generatePrimaryKey() {
 	if "" == om.Id {
 		om.Id = utilUuid.UuidGenerate()
 	}
 }
 
-func (om *OrmModelGormBase) GetPrimaryKey() string {
+func (om *OrmModelGormBaseOnlyId) GetPrimaryKey() string {
 	om.generatePrimaryKey()
 	return om.Id
 }
-func (om *OrmModelGormBase) GetPrimaryKeyFiledName() string {
+func (om *OrmModelGormBaseOnlyId) GetPrimaryKeyFiledName() string {
 	return "Id"
 }
-func (om *OrmModelGormBase) GetPrimaryKeyFiledNameSnake() string {
+func (om *OrmModelGormBaseOnlyId) GetPrimaryKeyFiledNameSnake() string {
 	return utilStr.ToSnake(om.GetPrimaryKeyFiledName())
 }
