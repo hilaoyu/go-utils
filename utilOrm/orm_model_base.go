@@ -4,6 +4,7 @@ import (
 	"github.com/hilaoyu/go-utils/utilStr"
 	"github.com/hilaoyu/go-utils/utilUuid"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
@@ -24,6 +25,23 @@ type OrmModelGormBaseWithCU struct {
 type OrmModelGormBase struct {
 	OrmModelGormBaseWithCU
 	DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
+}
+
+func NewOrmModelGormBaseWithCU(id string) (ormModelGormBaseWithCU OrmModelGormBaseWithCU) {
+	id = strings.TrimSpace(id)
+	ormModelGormBaseWithCU = OrmModelGormBaseWithCU{}
+	if "" != id {
+		ormModelGormBaseWithCU.Id = id
+	}
+	return
+}
+func NewOrmModelGormBase(id string) (ormModelGormBase OrmModelGormBase) {
+	id = strings.TrimSpace(id)
+	ormModelGormBase = OrmModelGormBase{}
+	if "" != id {
+		ormModelGormBase.Id = id
+	}
+	return
 }
 
 func (om *OrmModelGormBaseOnlyId) BeforeCreate(tx *gorm.DB) (err error) {
