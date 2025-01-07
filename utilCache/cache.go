@@ -4,6 +4,7 @@ import (
 	"github.com/gookit/cache"
 	"github.com/gookit/cache/gcache"
 	"github.com/gookit/cache/goredis"
+	"github.com/hilaoyu/go-utils/utilRedis"
 	"time"
 )
 
@@ -34,6 +35,14 @@ func (c *Cache) RegisterStoreMemory(size int) *Cache {
 func (c *Cache) RegisterStoreRedis(addr, pwd string, dbNum int) *Cache {
 	c.cacheManager.UnregisterAll()
 	goRedis := goredis.Connect(addr, pwd, dbNum)
+	goRedis.WithOptions(cache.WithPrefix(c.cacheKeyPrefix))
+	c.cacheManager.Register(goredis.Name, goRedis)
+	c.cacheManager.DefaultUse(goredis.Name)
+	return c
+}
+func (c *Cache) RegisterStoreRedisWithClient(rc *utilRedis.RedisClient) *Cache {
+	c.cacheManager.UnregisterAll()
+	goRedis := goredis.Connect(rc.Conf())
 	goRedis.WithOptions(cache.WithPrefix(c.cacheKeyPrefix))
 	c.cacheManager.Register(goredis.Name, goRedis)
 	c.cacheManager.DefaultUse(goredis.Name)

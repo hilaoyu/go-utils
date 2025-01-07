@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	redigo "github.com/gomodule/redigo/redis"
+	gookitRedis "github.com/gookit/cache/goredis"
 	"github.com/redis/go-redis/v9"
 	"reflect"
 	"strings"
@@ -14,8 +16,12 @@ const ErrRedisNil = redis.Nil
 
 type RedisClient struct {
 	*redis.Client
-	ctx         context.Context
-	lockManager *redsync.Redsync
+	ctx            context.Context
+	lockManager    *redsync.Redsync
+	maxIdleConn    int
+	configAddr     string
+	configPassword string
+	configDbNum    int
 }
 
 var (
@@ -27,7 +33,7 @@ func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int
 	if poolConnections < 1 {
 		poolConnections = 1
 	}
-	maxIdleConns := int(poolConnections / 5)
+	maxIdleConn := int(poolConnections / 5)
 
 	opts := redis.Options{
 		Addr:           addr,
@@ -35,7 +41,7 @@ func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int
 		DB:             db,
 		DialTimeout:    time.Duration(dialTimeoutSeconds) * time.Second,
 		MaxActiveConns: poolConnections,
-		MaxIdleConns:   maxIdleConns,
+		MaxIdleConns:   maxIdleConn,
 	}
 	c := redis.NewClient(&opts)
 
@@ -43,11 +49,20 @@ func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int
 	if nil != err {
 		return
 	}
+
 	rc = &RedisClient{
-		Client: c,
-		ctx:    redisCtx,
+		Client:         c,
+		ctx:            redisCtx,
+		maxIdleConn:    maxIdleConn,
+		configAddr:     addr,
+		configPassword: password,
+		configDbNum:    db,
 	}
 	return
+}
+
+func (rc *RedisClient) Conf() (addr string, password string, db int) {
+	return rc.configAddr, rc.configPassword, rc.configDbNum
 }
 
 func (rc *RedisClient) CtxDefault() context.Context {
@@ -100,7 +115,6 @@ func (rc *RedisClient) Set(key string, value interface{}, expirations ...time.Du
 	status := rc.Client.Set(rc.ctx, key, value, expiration)
 	return status.Result()
 }
-
 func (rc *RedisClient) Get(key string) (value string, err error) {
 	status := rc.Client.Get(rc.ctx, key)
 	return status.Result()
@@ -109,11 +123,24 @@ func (rc *RedisClient) GetDel(key string) (value string, err error) {
 	status := rc.Client.GetDel(rc.ctx, key)
 	return status.Result()
 }
-
 func (rc *RedisClient) GetString(key string) (value string, err error) {
 	value, err = rc.Get(key)
 
 	return
+}
+
+func (rc *RedisClient) RedigoConn() (conn redigo.Conn) {
+	conn = GoRedisToRedisGoConn(rc.Client)
+	return
+}
+func (rc *RedisClient) RedigoPool() (pool *redigo.Pool) {
+	pool = &redigo.Pool{Dial: func() (redigo.Conn, error) {
+		return rc.RedigoConn(), nil
+	}, MaxIdle: rc.maxIdleConn}
+	return
+}
+func (rc *RedisClient) GookitRedis() *gookitRedis.GoRedis {
+	return gookitRedis.Connect(rc.Conf())
 }
 
 func ErrorIsNil(err error) bool {
