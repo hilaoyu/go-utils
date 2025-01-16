@@ -5,7 +5,6 @@ import (
 	"github.com/hilaoyu/go-utils/utilUuid"
 	"gorm.io/gorm"
 	"strings"
-	"time"
 )
 
 type OrmModel interface {
@@ -19,12 +18,12 @@ type OrmModelGormBaseOnlyId struct {
 }
 type OrmModelGormBaseWithCU struct {
 	OrmModelGormBaseOnlyId
-	CreatedAt time.Time `gorm:"autoCreateTime;<-:create;index:index_created_at" json:"created_at" form:"-"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime:nano;index:index_updated_at" json:"updated_at" form:"-"`
+	CreatedAt OrmTime `gorm:"autoCreateTime;<-:create;index:index_created_at" json:"created_at" form:"-"`
+	UpdatedAt OrmTime `gorm:"autoUpdateTime:nano;index:index_updated_at" json:"updated_at" form:"-"`
 }
 type OrmModelGormBase struct {
 	OrmModelGormBaseWithCU
-	DeletedAt gorm.DeletedAt `json:"deleted_at" form:"-"`
+	DeletedAt *OrmTime `json:"deleted_at" form:"-"`
 }
 
 func NewOrmModelGormBaseWithCU(id string) (ormModelGormBaseWithCU OrmModelGormBaseWithCU) {
