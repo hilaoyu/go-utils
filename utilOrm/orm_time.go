@@ -62,3 +62,7 @@ func (t *OrmTime) Scan(v interface{}) error {
 	}
 	return fmt.Errorf("can not convert %v to timestamp", v)
 }
+
+func (t OrmTime) IsZero() bool {
+	return time.Time(t).IsZero()
+}
