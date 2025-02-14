@@ -11,7 +11,26 @@ var (
 	Timezone   = "Asia/Shanghai"
 )
 
-type OrmTime time.Time
+type OrmTime struct {
+	time.Time
+}
+
+func NewOrmTime(timeTime time.Time) *OrmTime {
+	return &OrmTime{timeTime}
+}
+
+func OrmTimeParse(value string, layout ...string) (*OrmTime, error) {
+	lay := TimeFormat
+	if len(layout) > 0 {
+		lay = layout[0]
+	}
+	expireTime, timeErr := time.Parse(lay, value)
+	if timeErr != nil {
+		return nil, timeErr
+	}
+
+	return &OrmTime{expireTime}, nil
+}
 
 func ormTimeLoc() *time.Location {
 	loc, err1 := time.LoadLocation(Timezone)
@@ -25,7 +44,7 @@ func ormTimeLoc() *time.Location {
 func (t OrmTime) MarshalJSON() ([]byte, error) {
 	b := make([]byte, 0, len(TimeFormat)+2)
 	b = append(b, '"')
-	b = time.Time(t).In(ormTimeLoc()).AppendFormat(b, TimeFormat)
+	b = t.In(ormTimeLoc()).AppendFormat(b, TimeFormat)
 	b = append(b, '"')
 	return b, nil
 }
@@ -33,21 +52,24 @@ func (t OrmTime) MarshalJSON() ([]byte, error) {
 func (t *OrmTime) UnmarshalJSON(data []byte) (err error) {
 
 	now, err := time.ParseInLocation(`"`+TimeFormat+`"`, string(data), ormTimeLoc())
-	*t = OrmTime(now)
+	if nil != err {
+		return
+	}
+	t.Time = now
 	return
 }
 
 func (t OrmTime) String() string {
-	return time.Time(t).In(ormTimeLoc()).Format(TimeFormat)
+	return t.In(ormTimeLoc()).Format(TimeFormat)
 }
 
 func (t OrmTime) local() time.Time {
-	return time.Time(t).In(ormTimeLoc())
+	return t.In(ormTimeLoc())
 }
 
 func (t OrmTime) Value() (driver.Value, error) {
 	var zeroTime time.Time
-	var ti = time.Time(t).In(ormTimeLoc())
+	var ti = t.In(ormTimeLoc())
 	if ti.UnixNano() == zeroTime.UnixNano() {
 		return nil, nil
 	}
@@ -57,12 +79,9 @@ func (t OrmTime) Value() (driver.Value, error) {
 func (t *OrmTime) Scan(v interface{}) error {
 	value, ok := v.(time.Time)
 	if ok {
-		*t = OrmTime(value.In(ormTimeLoc()))
+		//*t = OrmTime(value.In(ormTimeLoc()))
+		t.Time = value.In(ormTimeLoc())
 		return nil
 	}
 	return fmt.Errorf("can not convert %v to timestamp", v)
-}
-
-func (t OrmTime) IsZero() bool {
-	return time.Time(t).IsZero()
 }
