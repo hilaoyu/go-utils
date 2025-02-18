@@ -26,27 +26,6 @@ func GoRedisToRedisGoConn(client *redis.Client) *RedisGoConn {
 	}
 }
 
-/*
-
-Close() error
-
-	// Err returns a non-nil value when the connection is not usable.
-	Err() error
-
-	// Do sends a command to the server and returns the received reply.
-	// This function will use the timeout which was set when the connection is created
-	Do(commandName string, args ...interface{}) (reply interface{}, err error)
-
-	// Send writes the command to the client's output buffer.
-	Send(commandName string, args ...interface{}) error
-
-	// Flush flushes the output buffer to the Redis server.
-	Flush() error
-
-	// Receive receives a single reply from the Redis server
-	Receive() (reply interface{}, err error)
-*/
-
 func (rgc *RedisGoConn) Close() error {
 	rgc.mu.Lock()
 	defer rgc.mu.Unlock()
@@ -103,7 +82,7 @@ func (rgc *RedisGoConn) Flush() error {
 func (rgc *RedisGoConn) Receive() (reply interface{}, err error) {
 	rgc.mu.Lock()
 	defer rgc.mu.Unlock()
-	
+
 	if len(rgc.commands) > 0 {
 		cmd := utils.SliceShift(&rgc.commands)
 		if nil != cmd.Err() {

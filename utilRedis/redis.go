@@ -16,12 +16,14 @@ const ErrRedisNil = redis.Nil
 
 type RedisClient struct {
 	*redis.Client
-	ctx            context.Context
-	lockManager    *redsync.Redsync
-	maxIdleConn    int
-	configAddr     string
-	configPassword string
-	configDbNum    int
+	ctx                      context.Context
+	lockManager              *redsync.Redsync
+	maxIdleConn              int
+	configAddr               string
+	configPassword           string
+	configDbNum              int
+	configDialTimeoutSeconds int
+	configPoolConnections    int
 }
 
 var (
@@ -51,14 +53,19 @@ func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int
 	}
 
 	rc = &RedisClient{
-		Client:         c,
-		ctx:            redisCtx,
-		maxIdleConn:    maxIdleConn,
-		configAddr:     addr,
-		configPassword: password,
-		configDbNum:    db,
+		Client:                   c,
+		ctx:                      redisCtx,
+		maxIdleConn:              maxIdleConn,
+		configAddr:               addr,
+		configPassword:           password,
+		configDbNum:              db,
+		configDialTimeoutSeconds: dialTimeoutSeconds,
+		configPoolConnections:    poolConnections,
 	}
 	return
+}
+func (rc *RedisClient) Clone() (*RedisClient, error) {
+	return NewRedisClient(rc.configAddr, rc.configPassword, rc.configDbNum, rc.configDialTimeoutSeconds, rc.configPoolConnections)
 }
 
 func (rc *RedisClient) Conf() (addr string, password string, db int) {
@@ -130,7 +137,11 @@ func (rc *RedisClient) GetString(key string) (value string, err error) {
 }
 
 func (rc *RedisClient) RedigoConn() (conn redigo.Conn) {
-	conn = GoRedisToRedisGoConn(rc.Client)
+	c, err := rc.Clone()
+	if nil != err {
+		return
+	}
+	conn = GoRedisToRedisGoConn(c.Client)
 	return
 }
 func (rc *RedisClient) RedigoPool() (pool *redigo.Pool) {
