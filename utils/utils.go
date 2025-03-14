@@ -179,47 +179,6 @@ func ReverseBits(b byte) byte {
 	return byte(reverse[int(b)])
 }
 
-func SliceShift[S ~*[]E, E any](s S) (e E) {
-	if len(*s) <= 0 {
-		return
-	}
-	e = (*s)[0]
-	*s = (*s)[1:]
-	return
-}
-func SlicePop[S ~*[]E, E any](s S) (e E) {
-	sl := len(*s)
-	if sl <= 0 {
-		return
-	}
-	e = (*s)[sl-1]
-	*s = (*s)[:sl-1]
-	return
-}
-
-func SliceFind[S ~[]E, E any](s S, f func(E) bool) (e E) {
-	i := slices.IndexFunc(s, f)
-	if i >= 0 {
-		e = s[i]
-	}
-	return
-}
-func SliceContains[S ~[]E, E any](s S, e E) bool {
-	i := slices.IndexFunc(s, func(f E) bool {
-		return reflect.DeepEqual(f, e)
-	})
-	return i >= 0
-}
-
-func SliceFilter[S ~[]E, E any](s S, f func(E) bool) (s1 S) {
-	for _, e := range s {
-		if f(e) {
-			s1 = append(s1, e)
-		}
-	}
-	return
-}
-
 func MapFind[M ~map[K]E, K string | int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | float32 | float64, E any](m M, f func(E, K) bool) (e E, k K) {
 	for k, e := range m {
 		if f(e, k) {

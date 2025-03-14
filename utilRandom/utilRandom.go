@@ -6,12 +6,15 @@ import (
 	"time"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
+var (
+	random = rand.New(rand.NewSource(time.Now().UnixNano()))
+)
+
+func RandInt64(n int64) int64 {
+	return random.Int63n(n)
 }
-func RandInt(n int64) int64 {
-	i := rand.Int63n(n)
-	return i
+func RandInt(n int) int {
+	return random.Intn(n)
 }
 
 func RandString(n int, chars ...string) string {
