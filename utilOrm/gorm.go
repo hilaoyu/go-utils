@@ -8,6 +8,7 @@ import (
 	"github.com/hilaoyu/go-utils/utils"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -76,6 +77,26 @@ func NewUtilGormMysql(host string, port int, user string, password string, dbNam
 	//fmt.Println(dsn)
 	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
 	db, err := gorm.Open(mysql.Open(dsn), newGormConfig(tablePrefix))
+	if err != nil {
+		err = fmt.Errorf("连接数据库失败, error: %+v", err)
+		return
+	}
+
+	db = db.Omit(clause.Associations)
+
+	utilOrm = &UtilGorm{orm: db}
+	return
+
+}
+func NewUtilGormPostgresql(host string, port int, user string, password string, dbName string, dbSchema string, tablePrefix string, timeout time.Duration) (utilOrm *UtilGorm, err error) {
+
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Shanghai search_path=%s connect_timeout=%d", host, user, password, dbName, port, dbSchema, timeout)
+	//fmt.Println(dsn)
+
+	gormConfig := newGormConfig(tablePrefix)
+
+	db, err := gorm.Open(postgres.Open(dsn), gormConfig)
+
 	if err != nil {
 		err = fmt.Errorf("连接数据库失败, error: %+v", err)
 		return
