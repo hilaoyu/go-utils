@@ -3,7 +3,7 @@ package utilNetwork
 import "github.com/c-robinson/iplib"
 
 type UtilNet struct {
-	net iplib.Net
+	iplib.Net
 }
 
 func NewUtilNet(cidr string) (utilNet *UtilNet, err error) {
@@ -12,7 +12,7 @@ func NewUtilNet(cidr string) (utilNet *UtilNet, err error) {
 		return
 	}
 
-	utilNet = &UtilNet{net: vnet}
+	utilNet = &UtilNet{Net: vnet}
 	return
 }
 
@@ -24,7 +24,7 @@ func (un *UtilNet) GetIpByPosition(position ...uint32) string {
 	if p > 0 {
 		p = p - 1
 	}
-	return iplib.IncrementIPBy(un.net.FirstAddress(), p).String()
+	return iplib.IncrementIPBy(un.FirstAddress(), p).String()
 }
 func (un *UtilNet) GetIpByPositionReverse(position ...uint32) string {
 	var p = uint32(0)
@@ -34,8 +34,8 @@ func (un *UtilNet) GetIpByPositionReverse(position ...uint32) string {
 	if p > 0 {
 		p = p - 1
 	}
-	return iplib.DecrementIPBy(un.net.LastAddress(), p).String()
+	return iplib.DecrementIPBy(un.LastAddress(), p).String()
 }
 func (un *UtilNet) GetNetMask() string {
-	return iplib.HexStringToIP(un.net.Mask().String()).String()
+	return iplib.HexStringToIP(un.Mask().String()).String()
 }

@@ -170,6 +170,13 @@ func (ae *AesEncryptor) DecryptString(data string) (string, error) {
 	return string(out), err
 }
 
+func (ae *AesEncryptor) ApiDataEncrypt(data interface{}) (enStr string, err error) {
+	return ae.Encrypt(data)
+}
+func (ae *AesEncryptor) ApiDataDecrypt(enStr string, v interface{}) (err error) {
+	return ae.Decrypt(enStr, v)
+}
+
 func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
 	padding := blockSize - len(ciphertext)%blockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)

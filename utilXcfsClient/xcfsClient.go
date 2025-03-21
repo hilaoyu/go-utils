@@ -270,7 +270,7 @@ func (xc *XcfsClient) GenerateToken(directory string) (token *UploadTokenResult,
 	})
 
 	token = &UploadTokenResult{}
-	err = apiClient.RequestJsonApiAndDecode(&token, "POST", XcfsApiUploadTokenGenerate, map[string]string{})
+	err = apiClient.RequestJsonApiAndDecrypt(&token, "POST", XcfsApiUploadTokenGenerate, map[string]string{})
 
 	return
 }
@@ -318,7 +318,7 @@ func (xc *XcfsClient) VerifyAndUse(uris []string) (xcfsUris map[string]string, e
 			"file_uris": appUris,
 		})
 		uriResult := map[string]*UriVerifyResult{}
-		err1 := apiClient.RequestJsonApiAndDecode(&uriResult, "POST", XcfsApiUploadTokenVerifyAndUse, map[string]string{})
+		err1 := apiClient.RequestJsonApiAndDecrypt(&uriResult, "POST", XcfsApiUploadTokenVerifyAndUse, map[string]string{})
 		if nil != err1 {
 			err = fmt.Errorf("%v; %s 接口调用出错: %v", err, appId, err1)
 			continue

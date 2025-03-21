@@ -60,12 +60,57 @@ func (uh *HttpClient) UseProxySocks5(proxyAddr string, proxyUser string, proxyPa
 }
 
 func (uh *HttpClient) WithAesEncryptor(secret string, appId string) *HttpClient {
-	uh.aesEncryptor = utilEnc.NewAesEncryptor(secret)
+	uh.encryptor = utilEnc.NewAesEncryptor(secret)
+	uh.encryptorType = utilEnc.ApiDataEncryptorTypeAes
 	uh.aesEncAppId = appId
 	return uh.buildClient()
 }
-func (uh *HttpClient) GetAesEncryptor() *utilEnc.AesEncryptor {
-	return uh.aesEncryptor
+func (uh *HttpClient) WithRsaEncryptor(publicKey []byte, privateKey []byte, appId string) *HttpClient {
+	encryptor := utilEnc.NewRsaEncryptor()
+	var err error
+	if len(publicKey) > 0 {
+		_, err = encryptor.SetPublicKey(publicKey)
+
+		if nil != err {
+			uh.logError(fmt.Sprintf("http client: %v", err))
+		}
+	}
+	if len(privateKey) > 0 {
+		_, err = encryptor.SetPrivateKey(privateKey)
+		if nil != err {
+			uh.logError(fmt.Sprintf("http client: %v", err))
+		}
+	}
+	uh.encryptor = encryptor
+	uh.encryptorType = utilEnc.ApiDataEncryptorTypeRsa
+	uh.aesEncAppId = appId
+	return uh.buildClient()
+}
+func (uh *HttpClient) GetEncryptor() utilEnc.ApiDataEncryptor {
+	return uh.encryptor
+}
+func (uh *HttpClient) GetEncryptorType() string {
+	return uh.encryptorType
+}
+func (uh *HttpClient) GetAesEncryptor() (aesEncryptor *utilEnc.AesEncryptor) {
+	if nil == uh.encryptor {
+		return
+	}
+	aesEncryptor, ok := uh.encryptor.(*utilEnc.AesEncryptor)
+	if !ok {
+		aesEncryptor = nil
+	}
+	return
+}
+func (uh *HttpClient) GetRsaEncryptor() (aesEncryptor *utilEnc.RsaEncryptor) {
+	if nil == uh.encryptor {
+		return
+	}
+	aesEncryptor, ok := uh.encryptor.(*utilEnc.RsaEncryptor)
+	if !ok {
+		aesEncryptor = nil
+	}
+	return
 }
 
 func (uh *HttpClient) buildClient() *HttpClient {
@@ -143,13 +188,13 @@ func (uh *HttpClient) BuildRemoteUrlAndParams(method string, path string) (remot
 	}
 
 	params = uh.params
-	if nil != uh.aesEncryptor {
+	if nil != uh.encryptor {
 
 		if nil != uh.needEncData {
 			needEncData := uh.needEncData
 			needEncData["_timestamp"] = time.Now().UTC().Unix()
 			needEncData["_data_id"] = strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
-			enData, err1 := uh.aesEncryptor.Encrypt(needEncData)
+			enData, err1 := uh.encryptor.ApiDataEncrypt(needEncData)
 			if nil != err1 {
 				err = err1
 				return
@@ -241,7 +286,7 @@ func (uh *HttpClient) Request(method string, path string, additionalHeaders map[
 
 	remoteUrl, params, err := uh.BuildRemoteUrlAndParams(method, path)
 
-	//fmt.Println(remoteUrl, params.Encode())
+	fmt.Println(remoteUrl, params.Encode())
 
 	var body *strings.Reader
 	if "" != uh.rawBody {
@@ -319,7 +364,7 @@ func (uh *HttpClient) RequestJsonApi(v interface{}, method string, path string, 
 	return
 }
 
-func (uh *HttpClient) RequestJsonApiAndDecode(v interface{}, method string, path string, additionalHeaders map[string]string) (err error) {
+func (uh *HttpClient) RequestJsonApiAndDecrypt(v interface{}, method string, path string, additionalHeaders map[string]string) (err error) {
 
 	apiReturn := &ApiDataJson{}
 	err = uh.RequestJson(apiReturn, method, path, additionalHeaders)
@@ -332,7 +377,12 @@ func (uh *HttpClient) RequestJsonApiAndDecode(v interface{}, method string, path
 	}
 	if nil != v {
 		if enStr, ok := apiReturn.Data.(string); ok {
-			err = uh.aesEncryptor.Decrypt(enStr, &v)
+			if nil != uh.encryptor {
+				err = uh.encryptor.ApiDataDecrypt(enStr, &v)
+			} else {
+				err = fmt.Errorf("加密器为空")
+			}
+
 			if nil != err {
 				return
 			}

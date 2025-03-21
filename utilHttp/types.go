@@ -47,8 +47,9 @@ type HttpClient struct {
 	proxySocks5user     string
 	proxySocks5Password string
 
-	aesEncryptor *utilEnc.AesEncryptor
-	aesEncAppId  string
+	encryptor     utilEnc.ApiDataEncryptor
+	encryptorType string
+	aesEncAppId   string
 
 	logger *utilLogger.Logger
 }
