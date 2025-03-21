@@ -1,6 +1,7 @@
 package utilRandom
 
 import (
+	"io"
 	"math/rand"
 	"strings"
 	"time"
@@ -9,6 +10,10 @@ import (
 var (
 	random = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
+
+func RandReader() io.Reader {
+	return random
+}
 
 func RandInt64(n int64) int64 {
 	return random.Int63n(n)

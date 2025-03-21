@@ -86,6 +86,27 @@ func (uh *HttpClient) WithRsaEncryptor(publicKey []byte, privateKey []byte, appI
 	uh.aesEncAppId = appId
 	return uh.buildClient()
 }
+func (uh *HttpClient) WithGmEncryptor(publicKey []byte, privateKey []byte, appId string) *HttpClient {
+	encryptor := utilEnc.NewGmEncryptor()
+	var err error
+	if len(publicKey) > 0 {
+		_, err = encryptor.SetSm2PublicKey(publicKey)
+
+		if nil != err {
+			uh.logError(fmt.Sprintf("http client: %v", err))
+		}
+	}
+	if len(privateKey) > 0 {
+		_, err = encryptor.SetSm2PrivateKey(privateKey, nil)
+		if nil != err {
+			uh.logError(fmt.Sprintf("http client: %v", err))
+		}
+	}
+	uh.encryptor = encryptor
+	uh.encryptorType = utilEnc.ApiDataEncryptorTypeGm
+	uh.aesEncAppId = appId
+	return uh.buildClient()
+}
 func (uh *HttpClient) GetEncryptor() utilEnc.ApiDataEncryptor {
 	return uh.encryptor
 }
@@ -107,6 +128,17 @@ func (uh *HttpClient) GetRsaEncryptor() (aesEncryptor *utilEnc.RsaEncryptor) {
 		return
 	}
 	aesEncryptor, ok := uh.encryptor.(*utilEnc.RsaEncryptor)
+	if !ok {
+		aesEncryptor = nil
+	}
+	return
+}
+
+func (uh *HttpClient) GetGmEncryptor() (aesEncryptor *utilEnc.GmEncryptor) {
+	if nil == uh.encryptor {
+		return
+	}
+	aesEncryptor, ok := uh.encryptor.(*utilEnc.GmEncryptor)
 	if !ok {
 		aesEncryptor = nil
 	}
