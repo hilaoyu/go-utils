@@ -1,6 +1,9 @@
 package utilNetwork
 
-import "github.com/c-robinson/iplib"
+import (
+	"github.com/c-robinson/iplib"
+	"net"
+)
 
 type UtilNet struct {
 	iplib.Net
@@ -16,6 +19,13 @@ func NewUtilNet(cidr string) (utilNet *UtilNet, err error) {
 	return
 }
 
+func (un *UtilNet) IpPosition(ip net.IP) uint32 {
+	return iplib.DeltaIP(un.IP(), ip)
+}
+func (un *UtilNet) MaskSize() (size int) {
+	size, _ = un.Mask().Size()
+	return
+}
 func (un *UtilNet) GetIpByPosition(position ...uint32) string {
 	var p = uint32(0)
 	if len(position) > 0 {

@@ -114,6 +114,11 @@ func (rc *RedisClient) LockExtend(key string, duration time.Duration) (bool, err
 	return rc.GetLocker(key, duration, 1).Extend()
 }
 
+func (rc *RedisClient) Del(key ...string) (err error) {
+	status := rc.Client.Del(rc.ctx, key...)
+	return status.Err()
+}
+
 func (rc *RedisClient) Set(key string, value interface{}, expirations ...time.Duration) (string, error) {
 	expiration := time.Duration(0)
 	if len(expirations) > 0 {
@@ -152,6 +157,48 @@ func (rc *RedisClient) RedigoPool() (pool *redigo.Pool) {
 }
 func (rc *RedisClient) GookitRedis() *gookitRedis.GoRedis {
 	return gookitRedis.Connect(rc.Conf())
+}
+
+func (rc *RedisClient) BitFill(key string, val int8, start int64, length int64) (err error) {
+
+	script := redis.NewScript(`
+local v = 0
+if tonumber(ARGV[1]) > 0 then 
+	v = 1
+end
+for i=0,ARGV[3]-1 do
+	redis.call('BITFIELD', KEYS[1], 'SET', 'u1', ARGV[2]+i, v)
+end
+return ARGV[3]
+`)
+	//err = rc.Eval(rc.CtxDefault(), fmt.Sprintf("for i=0,ARGV[3]-1 do redis.call('BITFIELD', KEYS[1], 'SET', 'u1', ARGV[2]+i, ARGV[1]) end"), []string{key}, val, start, length).Err()
+	err = script.Eval(rc.CtxDefault(), rc, []string{key}, val, start, length).Err()
+	
+	return
+}
+
+func (rc *RedisClient) BitFindSpaceStep(key string, length int64, val int8, start int64, end int64, step int64) (position int64, err error) {
+	script := redis.NewScript(`
+local p = -1
+local v = 0
+if tonumber(ARGV[1]) <= 0 then 
+	v = 1
+end
+for i=ARGV[3],ARGV[4]-1,ARGV[5] do
+	p = redis.call('BITPOS', KEYS[1], v, i, i+ARGV[2]-1, 'BIT')
+	if p < 0 then
+		return i
+	end
+end
+return -1
+`)
+	cmd := script.Eval(rc.CtxDefault(), rc, []string{key}, val, length, start, end, step)
+	if nil != cmd.Err() {
+		err = cmd.Err()
+		return
+	}
+	position, err = cmd.Int64()
+	return
 }
 
 func ErrorIsNil(err error) bool {

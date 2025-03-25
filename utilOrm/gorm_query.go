@@ -96,6 +96,16 @@ func (q *GormQuery) Find(models interface{}, conds ...interface{}) (err error) {
 	}
 	return
 }
+func (q *GormQuery) FindInBatches(models interface{}, batchSize int, fc func(batch int) error) (err error) {
+	result := q.orm.FindInBatches(models, batchSize, func(tx *gorm.DB, batch int) error {
+		return fc(batch)
+	})
+	if nil != result.Error {
+		err = result.Error
+		return
+	}
+	return
+}
 func (q *GormQuery) Pluck(column string, model interface{}) (err error) {
 	result := q.orm.Pluck(column, model)
 	err = result.Error
