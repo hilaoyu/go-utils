@@ -373,6 +373,9 @@ func (ug *UtilGorm) Migrator() gorm.Migrator {
 func (ug *UtilGorm) Clone() *UtilGorm {
 	return ug.Session(nil)
 }
+func (ug *UtilGorm) ErrorIsNotFound(err error) bool {
+	return ErrorIsOrmNotFound(err)
+}
 
 func ErrorIsOrmNotFound(err error) bool {
 	return reflect.DeepEqual(err, gorm.ErrRecordNotFound)

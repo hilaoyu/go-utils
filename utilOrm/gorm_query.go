@@ -88,8 +88,11 @@ func (q *GormQuery) Count() (count int64, err error) {
 func (q *GormQuery) Find(models interface{}, conds ...interface{}) (err error) {
 	result := q.orm.Find(models, conds...)
 	if nil != result.Error {
-		err = result.Error
-		return
+		if !ErrorIsOrmNotFound(result.Error) {
+			err = result.Error
+			return
+		}
+
 	}
 	if nil != q.pager {
 		q.pager.Total, _ = q.Count()

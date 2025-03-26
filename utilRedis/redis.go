@@ -8,6 +8,7 @@ import (
 	gookitRedis "github.com/gookit/cache/goredis"
 	"github.com/redis/go-redis/v9"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -118,6 +119,21 @@ func (rc *RedisClient) Del(key ...string) (err error) {
 	status := rc.Client.Del(rc.ctx, key...)
 	return status.Err()
 }
+func (rc *RedisClient) DelByPattern(pattern string) (err error) {
+	script := redis.NewScript(`
+local keys = redis.call('KEYS', ARGV[1])
+local i 
+for i=1,#keys do 
+	redis.call('DEL', keys[i])
+end
+return i
+`)
+	err = script.Eval(rc.CtxDefault(), rc, []string{}, pattern).Err()
+	if ErrorIsNil(err) {
+		err = nil
+	}
+	return
+}
 
 func (rc *RedisClient) Set(key string, value interface{}, expirations ...time.Duration) (string, error) {
 	expiration := time.Duration(0)
@@ -138,6 +154,14 @@ func (rc *RedisClient) GetDel(key string) (value string, err error) {
 func (rc *RedisClient) GetString(key string) (value string, err error) {
 	value, err = rc.Get(key)
 
+	return
+}
+func (rc *RedisClient) GetInt(key string) (value int, err error) {
+	v, err := rc.Get(key)
+	if nil != err {
+		return
+	}
+	value, err = strconv.Atoi(v)
 	return
 }
 
@@ -171,9 +195,8 @@ for i=0,ARGV[3]-1 do
 end
 return ARGV[3]
 `)
-	//err = rc.Eval(rc.CtxDefault(), fmt.Sprintf("for i=0,ARGV[3]-1 do redis.call('BITFIELD', KEYS[1], 'SET', 'u1', ARGV[2]+i, ARGV[1]) end"), []string{key}, val, start, length).Err()
 	err = script.Eval(rc.CtxDefault(), rc, []string{key}, val, start, length).Err()
-	
+
 	return
 }
 
