@@ -134,7 +134,6 @@ func (q *GormQuery) Create(value interface{}) (err error) {
 	result := q.orm.Create(value)
 
 	err = result.Error
-
 	return
 }
 func (q *GormQuery) CreateInBatches(value interface{}, batchSize int) (err error) {

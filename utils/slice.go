@@ -23,6 +23,11 @@ func SlicePop[S ~*[]E, E any](s S) (e E) {
 	*s = (*s)[:sl-1]
 	return
 }
+func SliceRandom[S ~[]E, E any](s S) (e E) {
+	randomIndex := utilRandom.RandInt(len(s))
+	e = s[randomIndex]
+	return
+}
 
 func SliceFind[S ~[]E, E any](s S, f func(E) bool) (e E) {
 	i := slices.IndexFunc(s, f)

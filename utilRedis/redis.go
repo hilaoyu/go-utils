@@ -14,6 +14,7 @@ import (
 )
 
 const ErrRedisNil = redis.Nil
+const LockerKeyPrefix = "utilRedisLock_"
 
 type RedisClient struct {
 	*redis.Client
@@ -82,7 +83,7 @@ func (rc *RedisClient) GetLocker(key string, duration time.Duration, tries int) 
 	if "" == key {
 		return
 	}
-	lockerName := "utilRedisLock_" + key
+	lockerName := LockerKeyPrefix + key
 
 	locker, ok := syncLockersCache[lockerName]
 	if !ok {
