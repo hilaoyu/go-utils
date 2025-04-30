@@ -109,8 +109,8 @@ func (q *GormQuery) FindInBatches(models interface{}, batchSize int, fc func(bat
 	}
 	return
 }
-func (q *GormQuery) Pluck(column string, model interface{}) (err error) {
-	result := q.orm.Pluck(column, model)
+func (q *GormQuery) Pluck(column string, dest interface{}) (err error) {
+	result := q.orm.Pluck(column, dest)
 	err = result.Error
 	return
 }
