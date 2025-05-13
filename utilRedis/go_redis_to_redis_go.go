@@ -6,6 +6,7 @@ import (
 	"github.com/hilaoyu/go-utils/utils"
 	"github.com/redis/go-redis/v9"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -33,17 +34,22 @@ func (rgc *RedisGoConn) Close() error {
 	if nil == rgc.client {
 		return rgc.Err()
 	}
-	rgc.err = rgc.client.Close()
+
+	err := rgc.client.Close()
 	rgc.client = nil
-	if nil == rgc.err {
+	if nil == err {
 		rgc.err = fmt.Errorf("redis: closed")
 	}
-	return rgc.err
+	return err
 }
 func (rgc *RedisGoConn) Err() error {
 	return rgc.err
 }
 func (rgc *RedisGoConn) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+	commandName = strings.TrimSpace(commandName)
+	if "" == commandName {
+		return
+	}
 	if nil == rgc.client {
 		err = rgc.err
 		return

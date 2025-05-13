@@ -53,8 +53,12 @@ func (om *OrmModelGormBaseOnlyId) generatePrimaryKey() {
 	}
 }
 
-func (om *OrmModelGormBaseOnlyId) GetPrimaryKey() string {
+func (om *OrmModelGormBaseOnlyId) GetOrGeneratePrimaryKey() string {
 	om.generatePrimaryKey()
+	return om.Id
+}
+func (om *OrmModelGormBaseOnlyId) GetPrimaryKey() string {
+	//om.generatePrimaryKey()
 	return om.Id
 }
 func (om *OrmModelGormBaseOnlyId) GetPrimaryKeyFiledName() string {
