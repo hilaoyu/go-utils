@@ -279,10 +279,12 @@ func (r *RsaEncryptor) ApiDataDecryptWithAesAndUnmarshal(enStr string, v interfa
 	return
 }
 
+func (r *RsaEncryptor) EncryptorType() string {
+	return ApiDataEncryptorTypeGmSm4
+}
 func (r *RsaEncryptor) ApiDataEncrypt(data interface{}) (enStr string, err error) {
 	return r.ApiDataMarshalAndEncryptWithAes(data)
 }
-
 func (r *RsaEncryptor) ApiDataDecrypt(enStr string, v interface{}) (err error) {
 	return r.ApiDataDecryptWithAesAndUnmarshal(enStr, v)
 }

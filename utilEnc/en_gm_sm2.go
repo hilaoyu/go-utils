@@ -11,11 +11,9 @@ import (
 	"github.com/tjfoc/gmsm/x509"
 )
 
-type GmEncryptor struct {
+type GmSm2Encryptor struct {
 	sm2privateKey *sm2.PrivateKey
 	sm2publicKey  *sm2.PublicKey
-
-	sm4Key []byte
 }
 
 func GmSm2CreateKeys() (privateKey *sm2.PrivateKey, publicKey *sm2.PublicKey, err error) {
@@ -48,16 +46,12 @@ func GmSm2CreateKeysPem() (privateKeyPem []byte, publicKeyPem []byte, err error)
 	return
 }
 
-func GmSm4CreateKey() []byte {
-	return []byte(utilRandom.RandString(sm4.BlockSize))
-}
-
-func NewGmEncryptor() (encryptor *GmEncryptor) {
-	encryptor = &GmEncryptor{}
+func NewGmSm2Encryptor() (encryptor *GmSm2Encryptor) {
+	encryptor = &GmSm2Encryptor{}
 	return
 }
 
-func (r *GmEncryptor) SetSm2PrivateKey(privateKey []byte, pwd []byte) (key *sm2.PrivateKey, err error) {
+func (r *GmSm2Encryptor) SetSm2PrivateKey(privateKey []byte, pwd []byte) (key *sm2.PrivateKey, err error) {
 	key, err = x509.ReadPrivateKeyFromPem(privateKey, pwd)
 	if nil != err {
 		return
@@ -65,7 +59,7 @@ func (r *GmEncryptor) SetSm2PrivateKey(privateKey []byte, pwd []byte) (key *sm2.
 	r.sm2privateKey = key
 	return
 }
-func (r *GmEncryptor) SetSm2PublicKey(publicKey []byte) (key *sm2.PublicKey, err error) {
+func (r *GmSm2Encryptor) SetSm2PublicKey(publicKey []byte) (key *sm2.PublicKey, err error) {
 
 	key, err = x509.ReadPublicKeyFromPem(publicKey)
 	if nil != err {
@@ -75,7 +69,7 @@ func (r *GmEncryptor) SetSm2PublicKey(publicKey []byte) (key *sm2.PublicKey, err
 	return
 }
 
-func (r *GmEncryptor) Sm2PrivateKeySign(data []byte) (sign []byte, err error) {
+func (r *GmSm2Encryptor) Sm2PrivateKeySign(data []byte) (sign []byte, err error) {
 
 	if nil == r.sm2privateKey {
 		err = fmt.Errorf("private key is nil")
@@ -84,7 +78,7 @@ func (r *GmEncryptor) Sm2PrivateKeySign(data []byte) (sign []byte, err error) {
 	sign, err = r.sm2privateKey.Sign(utilRandom.RandReader(), data, nil)
 	return
 }
-func (r *GmEncryptor) Sm2PrivateKeySignAndBase64(data []byte) (sign string, err error) {
+func (r *GmSm2Encryptor) Sm2PrivateKeySignAndBase64(data []byte) (sign string, err error) {
 
 	signByte, err := r.Sm2PrivateKeySign(data)
 	if err != nil {
@@ -94,7 +88,7 @@ func (r *GmEncryptor) Sm2PrivateKeySignAndBase64(data []byte) (sign string, err 
 	return
 }
 
-func (r *GmEncryptor) Sm2PublicKeyVerifySign(data []byte, sign []byte) (err error) {
+func (r *GmSm2Encryptor) Sm2PublicKeyVerifySign(data []byte, sign []byte) (err error) {
 
 	if nil == r.sm2publicKey {
 		err = fmt.Errorf("public key is nil")
@@ -106,7 +100,7 @@ func (r *GmEncryptor) Sm2PublicKeyVerifySign(data []byte, sign []byte) (err erro
 
 	return
 }
-func (r *GmEncryptor) Sm2Base64DecodeAndPublicKeyVerifySign(data []byte, sign string) (err error) {
+func (r *GmSm2Encryptor) Sm2Base64DecodeAndPublicKeyVerifySign(data []byte, sign string) (err error) {
 	decodeSign, err := base64.StdEncoding.DecodeString(sign)
 	if err != nil {
 		return
@@ -114,7 +108,7 @@ func (r *GmEncryptor) Sm2Base64DecodeAndPublicKeyVerifySign(data []byte, sign st
 	return r.Sm2PublicKeyVerifySign(data, decodeSign)
 }
 
-func (r *GmEncryptor) Sm2PublicKeyEncrypt(data []byte) (enData []byte, err error) {
+func (r *GmSm2Encryptor) Sm2PublicKeyEncrypt(data []byte) (enData []byte, err error) {
 	if nil == r.sm2publicKey {
 		err = fmt.Errorf("public key is nil")
 		return
@@ -122,7 +116,7 @@ func (r *GmEncryptor) Sm2PublicKeyEncrypt(data []byte) (enData []byte, err error
 	enData, err = sm2.Encrypt(r.sm2publicKey, data, utilRandom.RandReader(), sm2.C1C3C2)
 	return
 }
-func (r *GmEncryptor) Sm2MarshalAndPublicKeyEncrypt(data interface{}) (enData []byte, err error) {
+func (r *GmSm2Encryptor) Sm2MarshalAndPublicKeyEncrypt(data interface{}) (enData []byte, err error) {
 	jsonByte, err := json.Marshal(data)
 	if nil != err {
 		err = fmt.Errorf("data to json  error: %+v", err)
@@ -131,7 +125,7 @@ func (r *GmEncryptor) Sm2MarshalAndPublicKeyEncrypt(data interface{}) (enData []
 	enData, err = r.Sm2PublicKeyEncrypt(jsonByte)
 	return
 }
-func (r *GmEncryptor) Sm2PublicKeyEncryptAndBase64(data []byte) (enData string, err error) {
+func (r *GmSm2Encryptor) Sm2PublicKeyEncryptAndBase64(data []byte) (enData string, err error) {
 	dataByte, err := r.Sm2PublicKeyEncrypt(data)
 	if nil != err {
 		return
@@ -139,7 +133,7 @@ func (r *GmEncryptor) Sm2PublicKeyEncryptAndBase64(data []byte) (enData string, 
 	enData = base64.StdEncoding.EncodeToString(dataByte)
 	return
 }
-func (r *GmEncryptor) Sm2MarshalAndPublicKeyEncryptAndBase64(data interface{}) (enData string, err error) {
+func (r *GmSm2Encryptor) Sm2MarshalAndPublicKeyEncryptAndBase64(data interface{}) (enData string, err error) {
 	jsonByte, err := json.Marshal(data)
 	if nil != err {
 		err = fmt.Errorf("data to json  error: %+v", err)
@@ -149,7 +143,7 @@ func (r *GmEncryptor) Sm2MarshalAndPublicKeyEncryptAndBase64(data interface{}) (
 	return
 }
 
-func (r *GmEncryptor) Sm2PrivateKeyDecrypt(cipher []byte) (data []byte, err error) {
+func (r *GmSm2Encryptor) Sm2PrivateKeyDecrypt(cipher []byte) (data []byte, err error) {
 	if nil == r.sm2privateKey {
 		err = fmt.Errorf("private key is nil")
 		return
@@ -160,7 +154,7 @@ func (r *GmEncryptor) Sm2PrivateKeyDecrypt(cipher []byte) (data []byte, err erro
 	}
 	return decrypt, nil
 }
-func (r *GmEncryptor) Sm2PrivateKeyDecryptAndUnmarshal(cipher []byte, v interface{}) (err error) {
+func (r *GmSm2Encryptor) Sm2PrivateKeyDecryptAndUnmarshal(cipher []byte, v interface{}) (err error) {
 	data, err := r.Sm2PrivateKeyDecrypt(cipher)
 	if nil != err {
 		return
@@ -168,7 +162,7 @@ func (r *GmEncryptor) Sm2PrivateKeyDecryptAndUnmarshal(cipher []byte, v interfac
 	err = json.Unmarshal(data, &v)
 	return
 }
-func (r *GmEncryptor) Sm2Base64DecodeAndPrivateKeyDecrypt(cipherText string) (data []byte, err error) {
+func (r *GmSm2Encryptor) Sm2Base64DecodeAndPrivateKeyDecrypt(cipherText string) (data []byte, err error) {
 	decodeCipher, err := base64.StdEncoding.DecodeString(cipherText)
 	if nil != err {
 		return
@@ -178,7 +172,7 @@ func (r *GmEncryptor) Sm2Base64DecodeAndPrivateKeyDecrypt(cipherText string) (da
 
 	return
 }
-func (r *GmEncryptor) Sm2Base64DecodeAndPrivateKeyDecryptAndUnmarshal(cipherText string, v interface{}) (err error) {
+func (r *GmSm2Encryptor) Sm2Base64DecodeAndPrivateKeyDecryptAndUnmarshal(cipherText string, v interface{}) (err error) {
 	data, err := r.Sm2Base64DecodeAndPrivateKeyDecrypt(cipherText)
 	if nil != err {
 		return
@@ -187,78 +181,13 @@ func (r *GmEncryptor) Sm2Base64DecodeAndPrivateKeyDecryptAndUnmarshal(cipherText
 	return
 }
 
-func (r *GmEncryptor) SetSm4Key(key []byte) (err error) {
-
-	r.sm4Key = key
-	return
+func (r *GmSm2Encryptor) EncryptorType() string {
+	return ApiDataEncryptorTypeGmSm2
 }
-
-func (r *GmEncryptor) Sm4Encrypt(data []byte) (enData []byte, err error) {
-	enData, err = sm4.Sm4Ecb(r.sm4Key, data, true)
-	return
-}
-func (r *GmEncryptor) Sm4MarshalAndEncrypt(data interface{}) (enData []byte, err error) {
-	jsonByte, err := json.Marshal(data)
-	if nil != err {
-		err = fmt.Errorf("data to json  error: %+v", err)
-		return
-	}
-	enData, err = r.Sm4Encrypt(jsonByte)
-
-	return
-}
-func (r *GmEncryptor) Sm4EncryptAndBase64(data []byte) (enData string, err error) {
-	enByte, err := r.Sm4Encrypt(data)
-	if nil != err {
-		return
-	}
-	enData = base64.StdEncoding.EncodeToString(enByte)
-	return
-}
-func (r *GmEncryptor) Sm4MarshalAndEncryptAndBase64(data interface{}) (enData string, err error) {
-	enByte, err := r.Sm4MarshalAndEncrypt(data)
-	if nil != err {
-		return
-	}
-	enData = base64.StdEncoding.EncodeToString(enByte)
-	return
-}
-func (r *GmEncryptor) Sm4Decrypt(enData []byte) (data []byte, err error) {
-	data, err = sm4.Sm4Ecb(r.sm4Key, enData, false)
-	return
-}
-func (r *GmEncryptor) Sm4DecryptAndUnmarshal(enData []byte, v interface{}) (err error) {
-	data, err := r.Sm4Decrypt(enData)
-	if nil != err {
-		return
-	}
-	err = json.Unmarshal(data, &v)
-	return
-}
-func (r *GmEncryptor) Sm4Base64DecodeAndDecrypt(cipherText string) (data []byte, err error) {
-	decodeCipher, err := base64.StdEncoding.DecodeString(cipherText)
-	if nil != err {
-		return
-	}
-
-	data, err = r.Sm4Decrypt(decodeCipher)
-
-	return
-}
-func (r *GmEncryptor) Sm4Base64DecodeAndDecryptAndUnmarshal(cipherText string, v interface{}) (err error) {
-	data, err := r.Sm4Base64DecodeAndDecrypt(cipherText)
-	if nil != err {
-		return
-	}
-	err = json.Unmarshal(data, &v)
-	return
-}
-
-func (r *GmEncryptor) ApiDataEncrypt(data interface{}) (enStr string, err error) {
+func (r *GmSm2Encryptor) ApiDataEncrypt(data interface{}) (enStr string, err error) {
 	sm4Key := GmSm4CreateKey()
 
-	sm4r := NewGmEncryptor()
-	_ = sm4r.SetSm4Key(sm4Key)
+	sm4r := NewGmSm4Encryptor(sm4Key)
 	enData, err := sm4r.Sm4MarshalAndEncrypt(data)
 	if nil != err {
 		return
@@ -272,7 +201,7 @@ func (r *GmEncryptor) ApiDataEncrypt(data interface{}) (enStr string, err error)
 	return
 }
 
-func (r *GmEncryptor) ApiDataDecrypt(enStr string, v interface{}) (err error) {
+func (r *GmSm2Encryptor) ApiDataDecrypt(enStr string, v interface{}) (err error) {
 	enByte, err := base64.StdEncoding.DecodeString(enStr)
 	if nil != err {
 		err = fmt.Errorf("base64解码错误: %v", err)
@@ -292,8 +221,7 @@ func (r *GmEncryptor) ApiDataDecrypt(enStr string, v interface{}) (err error) {
 
 	sm4Key := sm2DeData[:sm4.BlockSize]
 
-	sm4r := NewGmEncryptor()
-	_ = sm4r.SetSm4Key(sm4Key)
+	sm4r := NewGmSm4Encryptor(sm4Key)
 
 	err = sm4r.Sm4DecryptAndUnmarshal(sm4EnData, v)
 

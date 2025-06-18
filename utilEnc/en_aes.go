@@ -170,6 +170,9 @@ func (ae *AesEncryptor) DecryptString(data string) (string, error) {
 	return string(out), err
 }
 
+func (ae *AesEncryptor) EncryptorType() string {
+	return ApiDataEncryptorTypeAes
+}
 func (ae *AesEncryptor) ApiDataEncrypt(data interface{}) (enStr string, err error) {
 	return ae.Encrypt(data)
 }

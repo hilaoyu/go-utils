@@ -59,9 +59,13 @@ func (uh *HttpClient) UseProxySocks5(proxyAddr string, proxyUser string, proxyPa
 	return uh.buildClient()
 }
 
+func (uh *HttpClient) WithEncryptor(encryptor utilEnc.ApiDataEncryptor, appId string) *HttpClient {
+	uh.encryptor = encryptor
+	uh.aesEncAppId = appId
+	return uh.buildClient()
+}
 func (uh *HttpClient) WithAesEncryptor(secret string, appId string) *HttpClient {
 	uh.encryptor = utilEnc.NewAesEncryptor(secret)
-	uh.encryptorType = utilEnc.ApiDataEncryptorTypeAes
 	uh.aesEncAppId = appId
 	return uh.buildClient()
 }
@@ -82,12 +86,11 @@ func (uh *HttpClient) WithRsaEncryptor(publicKey []byte, privateKey []byte, appI
 		}
 	}
 	uh.encryptor = encryptor
-	uh.encryptorType = utilEnc.ApiDataEncryptorTypeRsa
 	uh.aesEncAppId = appId
 	return uh.buildClient()
 }
-func (uh *HttpClient) WithGmEncryptor(publicKey []byte, privateKey []byte, appId string) *HttpClient {
-	encryptor := utilEnc.NewGmEncryptor()
+func (uh *HttpClient) WithGmSm2Encryptor(publicKey []byte, privateKey []byte, appId string) *HttpClient {
+	encryptor := utilEnc.NewGmSm2Encryptor()
 	var err error
 	if len(publicKey) > 0 {
 		_, err = encryptor.SetSm2PublicKey(publicKey)
@@ -103,15 +106,23 @@ func (uh *HttpClient) WithGmEncryptor(publicKey []byte, privateKey []byte, appId
 		}
 	}
 	uh.encryptor = encryptor
-	uh.encryptorType = utilEnc.ApiDataEncryptorTypeGm
 	uh.aesEncAppId = appId
 	return uh.buildClient()
 }
+func (uh *HttpClient) WithGmSm4Encryptor(secret string, appId string) *HttpClient {
+	uh.encryptor = utilEnc.NewGmSm4Encryptor([]byte(secret))
+	uh.aesEncAppId = appId
+	return uh.buildClient()
+}
+
 func (uh *HttpClient) GetEncryptor() utilEnc.ApiDataEncryptor {
 	return uh.encryptor
 }
 func (uh *HttpClient) GetEncryptorType() string {
-	return uh.encryptorType
+	if nil != uh.encryptor {
+		return uh.encryptor.EncryptorType()
+	}
+	return ""
 }
 func (uh *HttpClient) GetAesEncryptor() (aesEncryptor *utilEnc.AesEncryptor) {
 	if nil == uh.encryptor {
@@ -133,12 +144,21 @@ func (uh *HttpClient) GetRsaEncryptor() (aesEncryptor *utilEnc.RsaEncryptor) {
 	}
 	return
 }
-
-func (uh *HttpClient) GetGmEncryptor() (aesEncryptor *utilEnc.GmEncryptor) {
+func (uh *HttpClient) GetGmSm2Encryptor() (aesEncryptor *utilEnc.GmSm2Encryptor) {
 	if nil == uh.encryptor {
 		return
 	}
-	aesEncryptor, ok := uh.encryptor.(*utilEnc.GmEncryptor)
+	aesEncryptor, ok := uh.encryptor.(*utilEnc.GmSm2Encryptor)
+	if !ok {
+		aesEncryptor = nil
+	}
+	return
+}
+func (uh *HttpClient) GetGmSm4Encryptor() (aesEncryptor *utilEnc.GmSm4Encryptor) {
+	if nil == uh.encryptor {
+		return
+	}
+	aesEncryptor, ok := uh.encryptor.(*utilEnc.GmSm4Encryptor)
 	if !ok {
 		aesEncryptor = nil
 	}
