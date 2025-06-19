@@ -7,7 +7,7 @@ func IsPublicIP(ip net.IP) bool {
 		return false
 	}
 
-	if ip.IsLoopback() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() {
+	if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() {
 		return false
 	}
 	return true
