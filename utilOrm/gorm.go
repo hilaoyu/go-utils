@@ -150,6 +150,16 @@ func NewUtilGormClickHouse(host string, port int, user string, password string, 
 	return
 
 }
+func (ug *UtilGorm) UnOmitAssociations() *UtilGorm {
+	utils.SliceDelElement(&ug.orm.Statement.Omits, func(e string) bool {
+		return clause.Associations == e
+	})
+	return ug
+}
+func (ug *UtilGorm) FullSaveAssociations() *UtilGorm {
+	ug.orm = ug.orm.Session(&gorm.Session{FullSaveAssociations: true})
+	return ug
+}
 
 func (ug *UtilGorm) SerLoggerWriter(writer io.Writer) *UtilGorm {
 	ug.orm.Logger = newGormLogger(writer)
@@ -263,7 +273,8 @@ func (ug *UtilGorm) ModelRead(model interface{}) error {
 	return ug.ModelQuery(model, nil).First(model)
 }
 func (ug *UtilGorm) ModelSave(model interface{}) error {
-	return ug.ModelQuery(model, nil).Save(model)
+	result := ug.orm.Save(model)
+	return result.Error
 }
 func (ug *UtilGorm) ModelDelete(model interface{}) error {
 	return ug.ModelQuery(model, nil).Delete(model)

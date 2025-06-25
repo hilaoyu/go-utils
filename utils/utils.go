@@ -101,14 +101,40 @@ func ReTry(callback func() bool, times int, step time.Duration) {
 
 }
 
-func InterfaceToStruct(out interface{}, in interface{}) error {
-	jsonStr, err := json.Marshal(in)
+func InterfaceToStruct(dest interface{}, src interface{}) error {
+	jsonStr, err := json.Marshal(src)
 	if nil != err {
 		return err
 	}
 
-	err = json.Unmarshal(jsonStr, &out)
+	err = json.Unmarshal(jsonStr, &dest)
 
+	return err
+
+}
+func AnyToStruct(dest interface{}, src interface{}) (err error) {
+	destValue := reflect.ValueOf(dest)
+	srcValue := reflect.ValueOf(src)
+
+	if !destValue.IsValid() || destValue.IsZero() {
+		err = fmt.Errorf("dest not valid")
+		return
+	}
+
+	if destValue.Type().Kind() != reflect.Ptr {
+		err = fmt.Errorf("dest must be a Pointer")
+		return
+	}
+
+	if srcValue.Type().Kind() == reflect.Ptr {
+		srcValue = srcValue.Elem()
+	}
+
+	if destValue.Elem().Type().String() != srcValue.Type().String() {
+		err = fmt.Errorf("src is not a struct of dest")
+		return
+	}
+	destValue.Elem().Set(srcValue)
 	return err
 
 }

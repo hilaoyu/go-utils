@@ -18,8 +18,8 @@ type OrmModelGormBaseOnlyId struct {
 }
 type OrmModelGormBaseWithCU struct {
 	OrmModelGormBaseOnlyId
-	CreatedAt OrmTime `gorm:"autoCreateTime;<-:create;index:index_created_at" json:"created_at" form:"-"`
-	UpdatedAt OrmTime `gorm:"autoUpdateTime:nano;index:index_updated_at" json:"updated_at" form:"-"`
+	CreatedAt OrmTime `gorm:"autoCreateTime;<-:create" json:"created_at" form:"-"`
+	UpdatedAt OrmTime `gorm:"autoUpdateTime:nano" json:"updated_at" form:"-"`
 }
 type OrmModelGormBase struct {
 	OrmModelGormBaseWithCU
