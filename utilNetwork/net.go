@@ -82,3 +82,31 @@ func (un *UtilNet) AvailableIps() (ips []net.IP) {
 	}
 	return
 }
+
+func GetNetMask(cidr string) (mask string, err error) {
+	mask = "255.255.255.255"
+	un, err := NewUtilNet(cidr)
+	if nil != err {
+		return
+	}
+	mask = un.GetNetMask()
+	return
+}
+
+func GetNetMaskSize(cidr string) (maskLen int, err error) {
+	maskLen = 32
+	un, err := NewUtilNet(cidr)
+	if nil != err {
+		return
+	}
+	maskLen = un.MaskSize()
+	return
+}
+func GetNetIp(cidr string) (ip string, err error) {
+	un, err := NewUtilNet(cidr)
+	if nil != err {
+		return
+	}
+	ip = un.IP().String()
+	return
+}
