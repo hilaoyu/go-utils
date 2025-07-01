@@ -2,8 +2,8 @@ package utilLogger
 
 import (
 	"fmt"
-	"github.com/gookit/slog/rotatefile"
 	"github.com/hilaoyu/go-utils/utilTime"
+	"github.com/natefinch/lumberjack"
 	"github.com/rs/zerolog"
 	"io"
 	"os"
@@ -252,12 +252,12 @@ func NewFileRotationWriter(dir string, name string, maxBackups int, maxSize int,
 	if err != nil {
 		return
 	}
-	rotateConfig := rotatefile.NewConfig(path.Join(dir, name))
-	rotateConfig.BackupNum = uint(maxBackups)
-	rotateConfig.MaxSize = uint64(maxSize)
-	rotateConfig.RotateTime = rotatefile.EveryDay
-	rotateConfig.BackupTime = 24 * uint(maxAge)
-	w, err = rotatefile.NewConfig(path.Join(dir, name)).Create()
+	w = &lumberjack.Logger{
+		Filename:   path.Join(dir, name),
+		MaxSize:    maxSize,
+		MaxAge:     maxAge,
+		MaxBackups: maxBackups,
+	}
 
 	return
 }
