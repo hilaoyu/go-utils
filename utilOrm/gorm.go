@@ -161,7 +161,7 @@ func (ug *UtilGorm) FullSaveAssociations() *UtilGorm {
 	return ug
 }
 
-func (ug *UtilGorm) SerLoggerWriter(writer io.Writer) *UtilGorm {
+func (ug *UtilGorm) SetLoggerWriter(writer io.Writer) *UtilGorm {
 	ug.orm.Logger = newGormLogger(writer)
 	return ug
 }
