@@ -3,6 +3,7 @@ package utilEnc
 import (
 	"bytes"
 	"crypto"
+	"crypto/aes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -263,8 +264,8 @@ func (r *RsaEncryptor) ApiDataDecryptWithAes(enStr string) (data []byte, err err
 		return
 	}
 
-	aesKey := rsaDeData[:16]
-	aesIv := rsaDeData[16:]
+	aesKey := rsaDeData[:len(rsaDeData)-aes.BlockSize]
+	aesIv := rsaDeData[len(rsaDeData)-aes.BlockSize:]
 
 	aesEnc := NewAesEncryptor(string(aesKey))
 	data, err = aesEnc.DecryptByte(aesEnData, aesIv)
