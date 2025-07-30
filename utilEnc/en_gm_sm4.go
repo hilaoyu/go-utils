@@ -66,6 +66,7 @@ func (r *GmSm4Encryptor) Sm4DecryptAndUnmarshal(enData []byte, v interface{}) (e
 	if nil != err {
 		return
 	}
+	fmt.Println(data, string(data))
 	err = json.Unmarshal(data, &v)
 	return
 }
@@ -100,7 +101,7 @@ func (r *GmSm4Encryptor) ApiDataEncrypt(data interface{}) (enStr string, err err
 
 func (r *GmSm4Encryptor) ApiDataDecrypt(enStr string, v interface{}) (err error) {
 
-	err = r.Sm4DecryptAndUnmarshal([]byte(enStr), v)
+	err = r.Sm4Base64DecodeAndDecryptAndUnmarshal(enStr, v)
 
 	return
 }
