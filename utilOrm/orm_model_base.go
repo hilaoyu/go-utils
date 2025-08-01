@@ -18,12 +18,12 @@ type OrmModelGormBaseOnlyId struct {
 }
 type OrmModelGormBaseWithCU struct {
 	OrmModelGormBaseOnlyId
-	CreatedAt OrmTime `gorm:"autoCreateTime;<-:create" json:"created_at" form:"-"`
-	UpdatedAt OrmTime `gorm:"autoUpdateTime:nano" json:"updated_at" form:"-"`
+	CreatedAt OrmTime `gorm:"autoCreateTime;<-:create" json:"created_at,omitempty" form:"-"`
+	UpdatedAt OrmTime `gorm:"autoUpdateTime:nano" json:"updated_at,omitempty" form:"-"`
 }
 type OrmModelGormBase struct {
 	OrmModelGormBaseWithCU
-	DeletedAt *OrmTime `json:"deleted_at" form:"-"`
+	DeletedAt *OrmTime `json:"deleted_at,omitempty" form:"-"`
 }
 
 func NewOrmModelGormBaseWithCU(id string) (ormModelGormBaseWithCU OrmModelGormBaseWithCU) {
