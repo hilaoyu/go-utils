@@ -4,6 +4,7 @@ import (
 	"github.com/hilaoyu/go-utils/utilEnc"
 	"github.com/hilaoyu/go-utils/utilLogger"
 	"github.com/hilaoyu/go-utils/utilProxy"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -22,6 +23,9 @@ type HttpServer struct {
 	listenAddresses       []*ServerListenAddr
 	server                *http.Server
 	sslVerifyClientCaFile string
+
+	logger    *utilLogger.Logger
+	listeners []net.Listener
 }
 
 type HttpClient struct {

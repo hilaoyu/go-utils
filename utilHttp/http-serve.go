@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 )
@@ -72,11 +71,14 @@ func (s *HttpServer) VerifyClientSsl(caFile string) *HttpServer {
 	return s
 }
 
-func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAddr) (err error) {
+func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAddr) {
+	var err error
 	if nil == logger {
 		logger = utilLogger.NewLogger()
-		logger.AddConsoleWriter()
+		_ = logger.AddConsoleWriter()
 	}
+	s.logger = logger
+
 	s.server.ErrorLog = log.New(
 		NewFilteringWriter(
 			logger,
@@ -98,10 +100,10 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 	if "" != s.sslVerifyClientCaFile {
 		tlsConfig := &tls.Config{}
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-		certPEMBlock, err := os.ReadFile(s.sslVerifyClientCaFile)
-		if err != nil {
-			logger.FatalF("sslVerifyClientCaFile error:%v", err)
-			return err
+		certPEMBlock, err1 := os.ReadFile(s.sslVerifyClientCaFile)
+		if err1 != nil {
+			logger.FatalF("sslVerifyClientCaFile error:%v", err1)
+			return
 		}
 		caPool := x509.NewCertPool()
 		caPool.AppendCertsFromPEM(certPEMBlock)
@@ -109,7 +111,6 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 		s.server.TLSConfig = tlsConfig
 	}
 
-	var listeners []net.Listener
 	quit := make(chan os.Signal)
 	for _, listenAddr := range s.listenAddresses {
 		listenAddr.Network = strings.ToLower(listenAddr.Network)
@@ -119,7 +120,7 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 			logger.ErrorF("server listen %s://%s , error: %v\n", listenAddr.Network, listenAddr.Addr, err)
 			continue
 		}
-		listeners = append(listeners, listener)
+		s.listeners = append(s.listeners, listener)
 
 		if "unix" == listenAddr.Network && listenAddr.Uid > 0 && listenAddr.Gid > 0 {
 			if err = os.Chown(listenAddr.Addr, listenAddr.Uid, listenAddr.Gid); err != nil {
@@ -152,20 +153,30 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 
 	}
 
-	// 等待中断信号以优雅地关闭服务器（设置 5 秒的超时时间）
-
-	signal.Notify(quit, os.Interrupt)
-	<-quit
 	if nil != err {
 		logger.ErrorF("%v\n", err)
 	}
-	logger.Info("Shutdown Server ...")
 
+	<-quit
+	s.Shutdown()
+	return
+}
+func (s *HttpServer) Shutdown() {
+	logger := s.logger
+	if nil == logger {
+		logger = utilLogger.NewLogger()
+		_ = logger.AddConsoleWriter()
+	}
+
+	logger.Info("Shutdown Server ...")
+	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Second)
 	defer func() {
-		for _, listener := range listeners {
+		for _, listener := range s.listeners {
 			if nil != listener {
-				listener.Close()
+				logger.InfoF("close  listener %s", listener.Addr())
+				_ = listener.Close()
+
 			}
 		}
 		cancel()
@@ -174,9 +185,7 @@ func (s *HttpServer) Run(logger *utilLogger.Logger, addresses ...*ServerListenAd
 		logger.FatalF("Server Shutdown: %v", err)
 	}
 	logger.Info("Server exiting")
-	return
 }
-
 func GetClientIps(r *http.Request) (ips []string) {
 
 	ip := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0])
