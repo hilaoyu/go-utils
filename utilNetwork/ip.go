@@ -2,6 +2,14 @@ package utilNetwork
 
 import "net"
 
+func Parse(addr string)(ip net.IP, ipNet *net.IPNet)  {
+	ip,ipNet,err := net.ParseCIDR(addr)
+	if nil != err {
+		ip = net.ParseIP(addr)
+	}
+	return
+}
+
 func IsPublicIP(ip net.IP) bool {
 	if ip == nil {
 		return false
