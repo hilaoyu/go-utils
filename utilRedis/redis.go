@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,9 +30,30 @@ type RedisClient struct {
 }
 
 var (
-	syncLockersCache = map[string]*redsync.Mutex{}
-	redisCtx         = context.Background()
+	syncLockersCache       = map[string]*redsync.Mutex{}
+	syncLockersCacheLocker = sync.Mutex{}
+	redisCtx               = context.Background()
 )
+
+func syncLockersCacheAdd(name string, locker *redsync.Mutex) {
+	name = strings.TrimSpace(name)
+	if "" == name || nil == locker {
+		return
+	}
+	syncLockersCacheLocker.Lock()
+	defer syncLockersCacheLocker.Unlock()
+	syncLockersCache[name] = locker
+}
+func syncLockersCacheGet(name string) (locker *redsync.Mutex) {
+	name = strings.TrimSpace(name)
+	if "" == name {
+		return
+	}
+	syncLockersCacheLocker.Lock()
+	defer syncLockersCacheLocker.Unlock()
+	locker = syncLockersCache[name]
+	return
+}
 
 func NewRedisClient(addr string, password string, db int, dialTimeoutSeconds int, poolConnections int) (rc *RedisClient, err error) {
 	if poolConnections < 1 {
@@ -85,13 +107,13 @@ func (rc *RedisClient) GetLocker(key string, duration time.Duration, tries int) 
 	}
 	lockerName := LockerKeyPrefix + key
 
-	locker, ok := syncLockersCache[lockerName]
-	if !ok {
+	locker = syncLockersCacheGet(lockerName)
+	if nil == locker {
 		if nil == rc.lockManager {
 			rc.lockManager = redsync.New(goredis.NewPool(rc.Client))
 		}
 		locker = rc.lockManager.NewMutex(lockerName)
-		syncLockersCache[lockerName] = locker
+		syncLockersCacheAdd(lockerName, locker)
 	}
 	if duration > 0 {
 		redsync.WithExpiry(duration).Apply(locker)
