@@ -198,6 +198,11 @@ func (ug *UtilGorm) Raw(sql string, values ...interface{}) (err error) {
 	err = result.Error
 	return
 }
+func (ug *UtilGorm) Exec(sql string, values ...interface{}) (err error) {
+	result := ug.orm.Exec(sql, values...)
+	err = result.Error
+	return
+}
 
 func (ug *UtilGorm) Session(config *gorm.Session) *UtilGorm {
 	if nil == config {
