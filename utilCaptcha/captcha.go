@@ -162,7 +162,7 @@ func (c *CaptchaService) cacheSaveCode(codeVal string, sendTo string, ttl ...tim
 		code = nil
 		return
 	}
-	err = c.cache.Set(c.buildCacheKey(code.Id), string(codeByte), expire)
+	err = c.cache.Set(c.buildCacheKey(code.Id), codeByte, expire)
 	if nil != err {
 		code = nil
 	}
