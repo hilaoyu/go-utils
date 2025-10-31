@@ -5,10 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hilaoyu/go-utils/utilEnc"
-	"github.com/hilaoyu/go-utils/utilLogger"
-	"github.com/hilaoyu/go-utils/utilProxy"
-	"github.com/hilaoyu/go-utils/utilSsl"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -18,6 +14,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hilaoyu/go-utils/utilEnc"
+	"github.com/hilaoyu/go-utils/utilLogger"
+	"github.com/hilaoyu/go-utils/utilProxy"
+	"github.com/hilaoyu/go-utils/utilSsl"
 )
 
 const PROXY_TYPE_SOCKS5 = "socks5"
@@ -241,18 +242,18 @@ func (uh *HttpClient) BuildRemoteUrlAndParams(method string, path string) (remot
 
 	params = uh.params
 	if nil != uh.encryptor {
-
-		if nil != uh.needEncData {
-			needEncData := uh.needEncData
-			needEncData["_timestamp"] = time.Now().UTC().Unix()
-			needEncData["_data_id"] = strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
-			enData, err1 := uh.encryptor.ApiDataEncrypt(needEncData)
-			if nil != err1 {
-				err = err1
-				return
-			}
-			params.Set("data", enData)
+		needEncData := uh.needEncData
+		if nil == needEncData {
+			needEncData = make(map[string]interface{})
 		}
+		needEncData["_timestamp"] = time.Now().UTC().Unix()
+		needEncData["_data_id"] = strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
+		enData, err1 := uh.encryptor.ApiDataEncrypt(needEncData)
+		if nil != err1 {
+			err = err1
+			return
+		}
+		params.Set("data", enData)
 		if "" != uh.aesEncAppId {
 			params.Set("app_id", uh.aesEncAppId)
 		}
