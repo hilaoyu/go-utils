@@ -32,6 +32,7 @@ type Route struct {
 
 // StatusInfo 封装状态信息
 type StatusInfo struct {
+	NodeId   string   `json:"node_id,omitempty"`
 	Title   string   `json:"title"`
 	Time    string   `json:"time"`
 	Clients []Client `json:"clients"`

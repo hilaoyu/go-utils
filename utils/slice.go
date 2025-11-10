@@ -1,9 +1,11 @@
 package utils
 
 import (
-	"github.com/hilaoyu/go-utils/utilRandom"
 	"reflect"
 	"slices"
+	"strings"
+
+	"github.com/hilaoyu/go-utils/utilRandom"
 )
 
 // SliceShift 返回并删除切片第一个元素
@@ -93,4 +95,23 @@ func SliceShuffle[S ~[]E, E any](s S) S {
 		s[i], s[j] = s[j], s[i]     // 交换元素
 	}
 	return s
+}
+
+// SliceStringFilterUniqueNonEmpty 字符串切片去空和去重
+func SliceStringFilterUniqueNonEmpty(ss []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, s := range ss {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if !seen[s] {
+			seen[s] = true
+			result = append(result, s)
+		}
+	}
+
+	return result
 }
