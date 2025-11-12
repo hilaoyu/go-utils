@@ -96,7 +96,7 @@ func (c *CaptchaService) GenerateImageString(width int, height int, codeLen int,
 	if height > 300 {
 		height = 300
 	}
-	imageDraw := base64Captcha.NewDriverString(height, width, 30, base64Captcha.OptionShowHollowLine, 0, codeVal, &color.RGBA{R: 0, G: 0, B: 0, A: 60}, c.fontsStorage, c.fonts)
+	imageDraw := base64Captcha.NewDriverString(height, width, 30, base64Captcha.OptionShowHollowLine, 0, codeVal, &color.RGBA{R: 96, G: 96, B: 96, A: 128}, c.fontsStorage, c.fonts)
 
 	image, err := imageDraw.DrawCaptcha(codeVal)
 	if nil != err {
@@ -124,7 +124,7 @@ func (c *CaptchaService) GenerateImageMath(width int, height int, ttl ...time.Du
 	if height > 300 {
 		height = 300
 	}
-	mathDraw := base64Captcha.NewDriverMath(height, width, 30, base64Captcha.OptionShowHollowLine, &color.RGBA{R: 0, G: 0, B: 0, A: 60}, c.fontsStorage, c.fonts)
+	mathDraw := base64Captcha.NewDriverMath(height, width, 30, base64Captcha.OptionShowHollowLine, &color.RGBA{R: 96, G: 96, B: 96, A: 128}, c.fontsStorage, c.fonts)
 
 	_, question, codeVal := mathDraw.GenerateIdQuestionAnswer()
 	image, err := mathDraw.DrawCaptcha(question)

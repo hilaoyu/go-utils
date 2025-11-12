@@ -98,7 +98,7 @@ func (r *ExcelRow) SetCellBool(columnTitle string, v bool) (err error) {
 func (r *ExcelRow) SetCellFloat(columnTitle string, v float64, precision int) (err error) {
 	return r.Sheet().SetCellFloat(r.RowNumber(), columnTitle, v, precision)
 }
-func (r *ExcelRow) SetCellInt(columnTitle string, v int) (err error) {
+func (r *ExcelRow) SetCellInt(columnTitle string, v int64) (err error) {
 	return r.Sheet().SetCellInt(r.RowNumber(), columnTitle, v)
 }
 func (r *ExcelRow) SetCellUint(columnTitle string, v uint64) (err error) {

@@ -134,7 +134,7 @@ func (c *ExcelCell) SetBool(v bool) (err error) {
 func (c *ExcelCell) SetFloat(v float64, precision int) (err error) {
 	return c.Row().SetCellFloat(c.ColumnTitle(), v, precision)
 }
-func (c *ExcelCell) SetInt(v int) (err error) {
+func (c *ExcelCell) SetInt(v int64) (err error) {
 	return c.Row().SetCellInt(c.ColumnTitle(), v)
 }
 func (c *ExcelCell) SetUint(v uint64) (err error) {

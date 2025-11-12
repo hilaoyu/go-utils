@@ -120,7 +120,7 @@ func (s *ExcelSheet) SetCellBool(rowNumber int, columnTitle string, v bool) (err
 func (s *ExcelSheet) SetCellFloat(rowNumber int, columnTitle string, v float64, precision int) (err error) {
 	return s.File().excelizeFile().SetCellFloat(s.sheetName, FormatCellId(rowNumber, columnTitle), v, precision, 32)
 }
-func (s *ExcelSheet) SetCellInt(rowNumber int, columnTitle string, v int) (err error) {
+func (s *ExcelSheet) SetCellInt(rowNumber int, columnTitle string, v int64) (err error) {
 	return s.File().excelizeFile().SetCellInt(s.sheetName, FormatCellId(rowNumber, columnTitle), v)
 }
 func (s *ExcelSheet) SetCellUint(rowNumber int, columnTitle string, v uint64) (err error) {
