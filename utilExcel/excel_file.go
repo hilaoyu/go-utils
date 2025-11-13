@@ -1,6 +1,10 @@
 package utilExcel
 
-import "github.com/xuri/excelize/v2"
+import (
+	"io"
+
+	"github.com/xuri/excelize/v2"
+)
 
 type ExcelFile struct {
 	ef *excelize.File
@@ -9,6 +13,15 @@ type ExcelFile struct {
 func OpenFile(filename string, opts ...ExcelFileOptions) (excelFile *ExcelFile, err error) {
 
 	f, err := excelize.OpenFile(filename, optionsToExcelize(opts)...)
+	if nil != err {
+		return
+	}
+	excelFile = &ExcelFile{ef: f}
+	return
+}
+func OpenReader(r io.Reader, opts ...ExcelFileOptions) (excelFile *ExcelFile, err error) {
+
+	f, err := excelize.OpenReader(r, optionsToExcelize(opts)...)
 	if nil != err {
 		return
 	}
