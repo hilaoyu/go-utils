@@ -3,6 +3,7 @@ package utilOrm
 import (
 	"database/sql/driver"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -42,6 +43,9 @@ func ormTimeLoc() *time.Location {
 }
 
 func (t OrmTime) MarshalJSON() ([]byte, error) {
+	if t.Time.IsZero() {
+		return []byte("\"\""), nil
+	}
 	b := make([]byte, 0, len(TimeFormat)+2)
 	b = append(b, '"')
 	b = t.In(ormTimeLoc()).AppendFormat(b, TimeFormat)
@@ -50,7 +54,9 @@ func (t OrmTime) MarshalJSON() ([]byte, error) {
 }
 
 func (t *OrmTime) UnmarshalJSON(data []byte) (err error) {
-
+	if nil == data  || len(data) == 0 || "null" == strings.ToLower(string(data)) {
+		return nil
+	}
 	now, err := time.ParseInLocation(`"`+TimeFormat+`"`, string(data), ormTimeLoc())
 	if nil != err {
 		return
@@ -59,20 +65,24 @@ func (t *OrmTime) UnmarshalJSON(data []byte) (err error) {
 	return
 }
 
-func (t OrmTime) String() string {
+func (t *OrmTime) String() string {
+	if nil == t || t.IsZero() {
+		return ""
+	}
 	return t.In(ormTimeLoc()).Format(TimeFormat)
 }
 
-func (t OrmTime) local() time.Time {
+func (t *OrmTime) local() time.Time {
 	return t.In(ormTimeLoc())
 }
 
 func (t OrmTime) Value() (driver.Value, error) {
-	var zeroTime time.Time
-	var ti = t.In(ormTimeLoc())
-	if ti.UnixNano() == zeroTime.UnixNano() {
+
+	if t.IsZero() {
 		return nil, nil
 	}
+	var ti = t.In(ormTimeLoc())
+
 	return ti, nil
 }
 
