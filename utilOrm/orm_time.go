@@ -3,6 +3,7 @@ package utilOrm
 import (
 	"database/sql/driver"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -12,6 +13,13 @@ var (
 	Timezone   = "Asia/Shanghai"
 )
 
+var parseFormats = []string{
+	"2006-01-02 15:04:05",
+	"2006-01-02",
+	time.RFC3339,
+	time.RFC3339Nano,
+}
+
 type OrmTime struct {
 	time.Time
 }
@@ -20,17 +28,35 @@ func NewOrmTime(timeTime time.Time) *OrmTime {
 	return &OrmTime{timeTime}
 }
 
-func OrmTimeParse(value string, layout ...string) (*OrmTime, error) {
-	lay := TimeFormat
-	if len(layout) > 0 {
-		lay = layout[0]
+func OrmTimeParse(value string, layout ...string) (t *OrmTime, err error) {
+	s := strings.TrimSpace(value)
+	if s == "" {
+		return nil, fmt.Errorf("value is empty")
 	}
-	expireTime, timeErr := time.Parse(lay, value)
-	if timeErr != nil {
-		return nil, timeErr
+	ts, err := strconv.ParseInt(s, 10, 64)
+	if err == nil {
+		t = NewOrmTime(time.Unix(ts, 0))
+		return
+	}
+	err = nil
+
+	if len(layout) <= 0 {
+		layout = parseFormats
 	}
 
-	return &OrmTime{expireTime}, nil
+	// try all formats
+	for _, f := range layout {
+		if to, err1 := time.ParseInLocation(f, s, ormTimeLoc()); err1 == nil {
+			t = NewOrmTime(to)
+			break
+		}
+	}
+
+	if t == nil {
+		err = fmt.Errorf("invalid time format: %s", value)
+	}
+
+	return
 }
 
 func ormTimeLoc() *time.Location {
@@ -54,15 +80,23 @@ func (t OrmTime) MarshalJSON() ([]byte, error) {
 }
 
 func (t *OrmTime) UnmarshalJSON(data []byte) (err error) {
-	if nil == data  || len(data) == 0 || "null" == strings.ToLower(string(data)) {
+	s := strings.Trim(string(data), "\"")
+	if nil == data || len(data) == 0 || "null" == strings.ToLower(s) {
 		return nil
 	}
-	now, err := time.ParseInLocation(`"`+TimeFormat+`"`, string(data), ormTimeLoc())
+
+	return t.UnmarshalText([]byte(s))
+
+}
+
+func (t *OrmTime) UnmarshalText(text []byte) error {
+	tmp, err := OrmTimeParse(string(text), Timezone)
 	if nil != err {
-		return
+		return err
 	}
-	t.Time = now
-	return
+	t.Time = tmp.Time
+
+	return nil
 }
 
 func (t *OrmTime) String() string {

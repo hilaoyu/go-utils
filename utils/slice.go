@@ -8,6 +8,22 @@ import (
 	"github.com/hilaoyu/go-utils/utilRandom"
 )
 
+// SliceDifference 切片差集
+func SliceDifference[T comparable](a, b []T) []T {
+	set := make(map[T]struct{}, len(b))
+	for _, v := range b {
+		set[v] = struct{}{}
+	}
+
+	var res []T
+	for _, v := range a {
+		if _, ok := set[v]; !ok {
+			res = append(res, v)
+		}
+	}
+	return res
+}
+
 // SliceShift 返回并删除切片第一个元素
 func SliceShift[S ~*[]E, E any](s S) (e E) {
 	if len(*s) <= 0 {
