@@ -1,6 +1,7 @@
 package utilRandom
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
 	"strings"
@@ -68,4 +69,14 @@ func RandPassword(n int, no_special ...bool) string {
 	}
 
 	return string(passwordBytes)
+}
+
+func UniqId(prefix string) string {
+	prefix = strings.TrimSpace(prefix)
+	return fmt.Sprintf(
+		"%s%x-%x",
+		prefix,
+		time.Now().UnixNano(),
+		rand.Uint32(),
+	)
 }

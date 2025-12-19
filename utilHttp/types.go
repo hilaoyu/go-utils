@@ -1,13 +1,14 @@
 package utilHttp
 
 import (
-	"github.com/hilaoyu/go-utils/utilEnc"
-	"github.com/hilaoyu/go-utils/utilLogger"
-	"github.com/hilaoyu/go-utils/utilProxy"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/hilaoyu/go-utils/utilEnc"
+	"github.com/hilaoyu/go-utils/utilLogger"
+	"github.com/hilaoyu/go-utils/utilProxy"
 )
 
 type ServerListenAddr struct {
@@ -58,12 +59,12 @@ type HttpClient struct {
 }
 
 type ApiDataJson struct {
-	Status  bool        `json:"status"`
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Errors  []string    `json:"errors"`
-	Debug   []string    `json:"debug,omitempty"`
-	Data    interface{} `json:"data"`
+	Status  bool              `json:"status"`
+	Code    int               `json:"code"`
+	Message string            `json:"message"`
+	Errors  map[string]string `json:"errors"`
+	Debug   []string          `json:"debug,omitempty"`
+	Data    interface{}       `json:"data"`
 }
 
 type ApiDataSelectOption struct {
