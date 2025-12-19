@@ -90,7 +90,7 @@ func (t *OrmTime) UnmarshalJSON(data []byte) (err error) {
 }
 
 func (t *OrmTime) UnmarshalText(text []byte) error {
-	tmp, err := OrmTimeParse(string(text), Timezone)
+	tmp, err := OrmTimeParse(string(text))
 	if nil != err {
 		return err
 	}
