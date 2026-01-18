@@ -394,6 +394,7 @@ func (uh *HttpClient) RequestJson(v interface{}, method string, path string, add
 	}
 	err = json.Unmarshal(body, &v)
 	if err != nil {
+		err = fmt.Errorf("error: %v ; body: %s", err, string(body))
 		return
 	}
 	return

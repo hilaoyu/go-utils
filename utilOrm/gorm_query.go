@@ -14,7 +14,7 @@ func (q *GormQuery) WithPager(p *utilHttp.Paginator) *GormQuery {
 	//var total int64
 	//q.orm.Count(&total)
 	//p.SetTotal(total)
-	q.orm = q.orm.Limit(p.PerPage).Offset(p.Offset())
+	//q.orm = q.orm.Limit(p.PageSize).Offset(p.Offset())
 	q.pager = p
 	return q
 }
@@ -86,7 +86,13 @@ func (q *GormQuery) Count() (count int64, err error) {
 	return
 }
 func (q *GormQuery) Find(models interface{}, conds ...interface{}) (err error) {
-	result := q.orm.Find(models, conds...)
+	orm := q.orm
+	if nil != q.pager {
+		q.pager.Total, _ = q.Count()
+		orm = q.orm.Session(&gorm.Session{})
+		orm = orm.Limit(q.pager.PageSize).Offset(q.pager.Offset())
+	}
+	result := orm.Find(models, conds...)
 	if nil != result.Error {
 		if !ErrorIsOrmNotFound(result.Error) {
 			err = result.Error
@@ -94,9 +100,7 @@ func (q *GormQuery) Find(models interface{}, conds ...interface{}) (err error) {
 		}
 
 	}
-	if nil != q.pager {
-		q.pager.Total, _ = q.Count()
-	}
+
 	return
 }
 func (q *GormQuery) FindInBatches(models interface{}, batchSize int, fc func(batch int) error) (err error) {

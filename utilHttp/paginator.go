@@ -15,17 +15,20 @@
 package utilHttp
 
 import (
-	"github.com/hilaoyu/go-utils/utilConvert"
+	"encoding/json"
 	"math"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/hilaoyu/go-utils/utilConvert"
 )
 
 type Paginator struct {
 	Request     *http.Request `json:"-"`
-	PerPage     int           `json:"per_page"`
-	CurrentPage int           `json:"current_page"`
+	PagerSkip   int           `json:"pager_start" form:"pager_start"`
+	PageSize    int           `json:"pager_offset" form:"pager_offset"`
+	PageCurrent int           `json:"pager_page" form:"pager_page"`
 	MaxPages    int           `json:"-"`
 
 	Total     int64 `json:"total"`
@@ -34,31 +37,48 @@ type Paginator struct {
 }
 
 func NewPaginator(req *http.Request, pageSize int, total interface{}) *Paginator {
-	p := Paginator{}
-	p.Request = req
-	perPage, _ := strconv.Atoi(p.Request.FormValue("per_page"))
-	if perPage <= 0 {
-		perPage = pageSize
+	p := Paginator{
+		Request:  req,
+		PageSize: pageSize,
 	}
-	if perPage <= 0 {
-		perPage = 10
+	if nil != p.Request {
+		if p.Request.Form == nil {
+			_ = p.Request.ParseForm()
+		}
+		p.PageCurrent, _ = strconv.Atoi(p.Request.FormValue("pager_page"))
+		perPage, _ := strconv.Atoi(p.Request.FormValue("pager_offset"))
+		if perPage <= 0 {
+			perPage = pageSize
+		}
+		if perPage <= 0 {
+			perPage = 10
+		}
+		if perPage > 1000 {
+			perPage = 1000
+		}
+		p.PageSize = perPage
 	}
-	if perPage > 1000 {
-		perPage = 1000
-	}
-	p.PerPage = perPage
+
 	p.SetTotal(total)
 	p.GetPages()
 	return &p
 }
+func (p *Paginator) MarshalJson() (b []byte, err error) {
+	return json.Marshal(map[string]interface{}{
+		"current_page": p.GetCurrentPage(),
+		"per_page":     p.PageSize,
+		"total":        p.GetTotal(),
+	})
+}
+
 func (p *Paginator) GetTotal() int64 {
 	return p.Total
 }
-func (p *Paginator) GetPageNums() int {
+func (p *Paginator) GetPageNum() int {
 	if p.PageNums != 0 {
 		return p.PageNums
 	}
-	pageNums := math.Ceil(float64(p.Total) / float64(p.PerPage))
+	pageNums := math.Ceil(float64(p.Total) / float64(p.PageSize))
 	if p.MaxPages > 0 {
 		pageNums = math.Min(pageNums, float64(p.MaxPages))
 	}
@@ -72,27 +92,18 @@ func (p *Paginator) SetTotal(total interface{}) {
 }
 
 func (p *Paginator) GetCurrentPage() int {
-	if p.CurrentPage != 0 {
-		return p.CurrentPage
-	}
-	if p.Request.Form == nil {
-		p.Request.ParseForm()
-	}
-	p.CurrentPage, _ = strconv.Atoi(p.Request.FormValue("pager_page"))
-	/*if p.CurrentPage > p.GetPageNums() {
-		p.CurrentPage = p.GetPageNums()
-	}*/
-	if p.CurrentPage <= 0 {
-		p.CurrentPage = 1
+
+	if p.PageCurrent <= 0 {
+		p.PageCurrent = 1
 	}
 
-	return p.CurrentPage
+	return p.PageCurrent
 }
 
 func (p *Paginator) GetPages() []int {
 	if p.PageRange == nil && p.Total > 0 {
 		var pages []int
-		pageNums := p.GetPageNums()
+		pageNums := p.GetPageNum()
 		page := p.GetCurrentPage()
 		switch {
 		case page >= pageNums-4 && pageNums > 9:
@@ -149,7 +160,7 @@ func (p *Paginator) PageLinkFirst() (link string) {
 }
 
 func (p *Paginator) PageLinkLast() (link string) {
-	return p.PageLink(p.GetPageNums())
+	return p.PageLink(p.GetPageNum())
 }
 
 func (p *Paginator) HasPrev() bool {
@@ -157,7 +168,7 @@ func (p *Paginator) HasPrev() bool {
 }
 
 func (p *Paginator) HasNext() bool {
-	return p.GetCurrentPage() < p.GetPageNums()
+	return p.GetCurrentPage() < p.GetPageNum()
 }
 
 func (p *Paginator) IsActive(page int) bool {
@@ -165,9 +176,12 @@ func (p *Paginator) IsActive(page int) bool {
 }
 
 func (p *Paginator) Offset() int {
-	return (p.GetCurrentPage() - 1) * p.PerPage
+	if p.PagerSkip > 0 {
+		return p.PagerSkip
+	}
+	return (p.GetCurrentPage() - 1) * p.PageSize
 }
 
 func (p *Paginator) HasPages() bool {
-	return p.GetPageNums() > 1
+	return p.GetPageNum() > 1
 }
