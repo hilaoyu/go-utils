@@ -2,8 +2,10 @@ package utilConvert
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // convert string to specify type
@@ -138,6 +140,7 @@ func ToStr(value interface{}, args ...int) (s string) {
 	return s
 }
 
+
 // convert any numeric value to int64
 func ToInt64(value interface{}) (d int64, err error) {
 	val := reflect.ValueOf(value)
@@ -156,6 +159,10 @@ func ToInt64(value interface{}) (d int64, err error) {
 	}
 	return
 }
+func ToInt64IgnoreError(value interface{}) (int64){
+	v,_ := ToInt64(value)
+	return v
+}
 func ToInt(value interface{}) (d int, err error) {
 	val := reflect.ValueOf(value)
 	switch value.(type) {
@@ -173,6 +180,136 @@ func ToInt(value interface{}) (d int, err error) {
 		err = fmt.Errorf("ToInt64 need numeric not `%T`", value)
 	}
 	return
+}
+func ToIntIgnoreError(value interface{}) (int){
+	v,_ := ToInt(value)
+	return v
+}
+
+func ToUint8(value interface{}) (uint8, error) {
+	switch v := value.(type) {
+
+	case uint8:
+		return v, nil
+
+	case uint, uint16, uint32, uint64:
+		n := reflect.ValueOf(v).Uint()
+		if n > math.MaxUint8 {
+			return 0, fmt.Errorf("value %d overflows uint8", n)
+		}
+		return uint8(n), nil
+
+	case int, int8, int16, int32, int64:
+		n := reflect.ValueOf(v).Int()
+		if n < 0 || n > math.MaxUint8 {
+			return 0, fmt.Errorf("value %d overflows uint8", n)
+		}
+		return uint8(n), nil
+
+	case float32, float64:
+		f := reflect.ValueOf(v).Float()
+		if f < 0 || f > math.MaxUint8 {
+			return 0, fmt.Errorf("value %f overflows uint8", f)
+		}
+		return uint8(f), nil
+
+	case string:
+		s := strings.TrimSpace(v)
+		n, err := strconv.ParseUint(s, 10, 8)
+		if err != nil {
+			return 0, err
+		}
+		return uint8(n), nil
+
+	default:
+		return 0, fmt.Errorf("ToUint8: unsupported type %T", value)
+	}
+}
+func ToUint8IgnoreError(value interface{}) (uint8){
+	v,_ := ToUint8(value)
+	return v
+}
+func ToUint32(value interface{}) (uint32, error) {
+	switch v := value.(type) {
+
+	case uint32:
+		return v, nil
+
+	case uint, uint8, uint16, uint64:
+		n := reflect.ValueOf(v).Uint()
+		if n > math.MaxUint32 {
+			return 0, fmt.Errorf("value %d overflows uint32", n)
+		}
+		return uint32(n), nil
+
+	case int, int8, int16, int32, int64:
+		n := reflect.ValueOf(v).Int()
+		if n < 0 || n > math.MaxUint32 {
+			return 0, fmt.Errorf("value %d overflows uint32", n)
+		}
+		return uint32(n), nil
+
+	case float32, float64:
+		f := reflect.ValueOf(v).Float()
+		if f < 0 || f > math.MaxUint32 {
+			return 0, fmt.Errorf("value %f overflows uint32", f)
+		}
+		return uint32(f), nil
+
+	case string:
+		s := strings.TrimSpace(v)
+		n, err := strconv.ParseUint(s, 10, 32)
+		if err != nil {
+			return 0, err
+		}
+		return uint32(n), nil
+
+	default:
+		return 0, fmt.Errorf("ToUint32: unsupported type %T", value)
+	}
+}
+func ToUint32IgnoreError(value interface{}) (uint32){
+	v,_ := ToUint32(value)
+	return v
+}
+func ToUint64(value interface{}) (uint64, error) {
+	switch v := value.(type) {
+
+	case uint64:
+		return v, nil
+
+	case uint, uint8, uint16, uint32:
+		return reflect.ValueOf(v).Uint(), nil
+
+	case int, int8, int16, int32, int64:
+		n := reflect.ValueOf(v).Int()
+		if n < 0 {
+			return 0, fmt.Errorf("value %d overflows uint64", n)
+		}
+		return uint64(n), nil
+
+	case float32, float64:
+		f := reflect.ValueOf(v).Float()
+		if f < 0 || f > math.MaxUint64 {
+			return 0, fmt.Errorf("value %f overflows uint64", f)
+		}
+		return uint64(f), nil
+
+	case string:
+		s := strings.TrimSpace(v)
+		n, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return n, nil
+
+	default:
+		return 0, fmt.Errorf("ToUint64: unsupported type %T", value)
+	}
+}
+func ToUint64IgnoreError(value interface{}) (uint64){
+	v,_ := ToUint64(value)
+	return v
 }
 
 type argString []string
