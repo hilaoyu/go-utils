@@ -6,13 +6,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/hilaoyu/go-utils/utilLogger"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/hilaoyu/go-utils/utilLogger"
 )
 
 type FilteringLogger struct {
@@ -40,7 +41,7 @@ func NewFilteringWriter(logger *utilLogger.Logger, excludeStrings ...string) *Fi
 }
 
 func NewHttpServe(handler http.Handler, addresses ...*ServerListenAddr) (s *HttpServer) {
-	s = &HttpServer{server: &http.Server{Handler: handler}, listenAddresses: addresses}
+	s = &HttpServer{server: &http.Server{Handler: handler, TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler))}, listenAddresses: addresses}
 	return
 }
 
