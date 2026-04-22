@@ -79,6 +79,10 @@ func (q *GormQuery) Distinct(args ...interface{}) *GormQuery {
 	q.orm = q.orm.Distinct(args...)
 	return q
 }
+func (q *GormQuery) Assign(attrs ...interface{}) *GormQuery {
+	q.orm = q.orm.Assign(attrs...)
+	return q
+}
 
 func (q *GormQuery) Count() (count int64, err error) {
 	result := q.orm.Count(&count)
