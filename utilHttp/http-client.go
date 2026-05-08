@@ -556,6 +556,12 @@ func (uh *HttpClient) SignRequest(secret string, method string, path string, par
 	return
 }
 
+func (uh *HttpClient) SignRequestJsonApi(v interface{},secret string, method string, path string, params url.Values, additionalHeaders map[string]string) ( err error) {
+	params = SignRequestParams(secret, params)
+	err = uh.WithParams(params).RequestJsonApi(v,method, path, additionalHeaders)
+	return
+}
+
 func (uh *HttpClient) SetLogger(logger *utilLogger.Logger) *HttpClient {
 	uh.logger = logger
 	return uh
