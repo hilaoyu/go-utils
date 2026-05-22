@@ -28,6 +28,7 @@ type Paginator struct {
 	Request     *http.Request `json:"-"`
 	PagerSkip   int           `json:"pager_start" form:"pager_start"`
 	PageSize    int           `json:"pager_offset" form:"pager_offset"`
+	PagePerPage    int           `json:"per_page" form:"per_page"`
 	PageCurrent int           `json:"pager_page" form:"pager_page"`
 	MaxPages    int           `json:"-"`
 
@@ -46,9 +47,15 @@ func NewPaginator(req *http.Request, pageSize int, total interface{}) *Paginator
 			_ = p.Request.ParseForm()
 		}
 		p.PageCurrent, _ = strconv.Atoi(p.Request.FormValue("pager_page"))
-		perPage, _ := strconv.Atoi(p.Request.FormValue("pager_offset"))
+		pagerOffset, _ := strconv.Atoi(p.Request.FormValue("pager_offset"))
+		perPage, _ := strconv.Atoi(p.Request.FormValue("per_page"))
 		if perPage <= 0 {
-			perPage = pageSize
+			if pagerOffset > 0 {
+				perPage = pagerOffset
+			}else{
+				perPage = pageSize
+			}
+
 		}
 		if perPage <= 0 {
 			perPage = 10
@@ -59,6 +66,7 @@ func NewPaginator(req *http.Request, pageSize int, total interface{}) *Paginator
 		p.PageSize = perPage
 	}
 
+	p.PagePerPage = p.PageSize
 	p.SetTotal(total)
 	p.GetPages()
 	return &p
