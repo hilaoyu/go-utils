@@ -6,19 +6,18 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/gabriel-vasile/mimetype"
-	"github.com/hilaoyu/go-utils/utilCmd"
-	"github.com/hilaoyu/go-utils/utilStr"
-	"github.com/hilaoyu/go-utils/utils"
 	"io"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/gabriel-vasile/mimetype"
+	"github.com/hilaoyu/go-utils/utilCmd"
+	"github.com/hilaoyu/go-utils/utilStr"
 )
 
 type ByModTimeAsc []os.FileInfo
@@ -149,15 +148,6 @@ func Move(src string, dst string) error {
 	dstDir := filepath.Dir(dst)
 	if !CheckDir(dstDir) {
 		return errors.New("目标目录不可写")
-	}
-	if "windows" != utils.RunningOs("windows") {
-		var cmd *exec.Cmd
-		cmd = exec.Command("mv", src, dst)
-		_, err := cmd.Output()
-		if err != nil {
-			return err
-		}
-		return nil
 	}
 	return os.Rename(src, dst)
 }
