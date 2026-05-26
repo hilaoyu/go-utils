@@ -23,14 +23,19 @@ func RunCommand(wait bool, name string, args ...string) (string, error) {
 	///fmt.Println("Running cmd:" + cmdExec.String())
 	if wait {
 		result, err := cmdExec.CombinedOutput()
-		/*if err != nil {
-			return result, err
-		}*/
 		return strings.TrimSpace(string(result)), err
-	} else {
-		err := cmdExec.Start()
+	}
+
+	if err := cmdExec.Start(); err != nil {
 		return "", err
 	}
+
+	go func() {
+		_ = cmdExec.Wait()
+	}()
+
+	return "", nil
+
 }
 
 // 根据进程名判断进程是否运行
