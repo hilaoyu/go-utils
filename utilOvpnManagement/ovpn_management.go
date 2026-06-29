@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,7 +33,7 @@ type Route struct {
 
 // StatusInfo 封装状态信息
 type StatusInfo struct {
-	NodeId   string   `json:"node_id,omitempty"`
+	NodeId  string   `json:"node_id,omitempty"`
 	Title   string   `json:"title"`
 	Time    string   `json:"time"`
 	Clients []Client `json:"clients"`
@@ -45,6 +46,8 @@ type OpenVpnManagement struct {
 	Timeout  time.Duration
 	conn     net.Conn
 	reader   *bufio.Reader
+
+	cmdLocker sync.Mutex
 }
 
 // NewOpenVpnManagement 创建新的 OpenVPN 管理客户端
@@ -93,6 +96,9 @@ func (m *OpenVpnManagement) Close() {
 
 // RunCommand 执行任意命令并返回原始输出
 func (m *OpenVpnManagement) RunCommand(cmd string, endStr string) (result string, err error) {
+	m.cmdLocker.Lock()
+	defer m.cmdLocker.Unlock()
+
 	err = m.Connect()
 	if nil != err {
 		return
