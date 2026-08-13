@@ -548,6 +548,33 @@ func (uh *HttpClient) DownloadFile(path string, headers map[string]string) (body
 
 	return
 }
+func (uh *HttpClient) DownloadFileSave(savePath string,path string, headers map[string]string) ( err error) {
+	resp, err := uh.Request("Get", path, headers)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	uh.lastRespStatusCode = resp.StatusCode
+	if resp.StatusCode != 200 {
+		return
+	}
+	
+	w,err := os.Create(savePath)
+	if nil != err {
+		return
+	}
+
+	defer w.Close()
+
+
+	_,err = io.Copy(w,resp.Body)
+
+	if nil != err {
+		return
+	}
+
+	return
+}
 
 func (uh *HttpClient) SignRequest(secret string, method string, path string, params url.Values, additionalHeaders map[string]string) (resp *http.Response, err error) {
 	params = SignRequestParams(secret, params)

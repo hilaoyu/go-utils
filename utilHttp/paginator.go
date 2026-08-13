@@ -28,7 +28,7 @@ type Paginator struct {
 	Request     *http.Request `json:"-"`
 	PagerSkip   int           `json:"pager_start" form:"pager_start"`
 	PageSize    int           `json:"pager_offset" form:"pager_offset"`
-	PagePerPage    int           `json:"per_page" form:"per_page"`
+	PagePerPage int           `json:"per_page" form:"per_page"`
 	PageCurrent int           `json:"pager_page" form:"pager_page"`
 	MaxPages    int           `json:"-"`
 
@@ -52,7 +52,7 @@ func NewPaginator(req *http.Request, pageSize int, total interface{}) *Paginator
 		if perPage <= 0 {
 			if pagerOffset > 0 {
 				perPage = pagerOffset
-			}else{
+			} else {
 				perPage = pageSize
 			}
 
@@ -71,8 +71,14 @@ func NewPaginator(req *http.Request, pageSize int, total interface{}) *Paginator
 	p.GetPages()
 	return &p
 }
-func (p *Paginator) MarshalJson() (b []byte, err error) {
+func (p *Paginator) MarshalJSON() (b []byte, err error) {
 	return json.Marshal(map[string]interface{}{
+		"pager_start":  p.Offset(),
+		"pager_offset": p.PageSize,
+		"pager_page":   p.GetCurrentPage(),
+		"page_nums":    p.GetPageNum(),
+		"pages":        p.GetPageNum(),
+
 		"current_page": p.GetCurrentPage(),
 		"per_page":     p.PageSize,
 		"total":        p.GetTotal(),
