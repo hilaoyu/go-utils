@@ -69,8 +69,16 @@ func (m *OpenVpnManagement) Connect() (err error) {
 		err = fmt.Errorf("连接失败: %v", err)
 		return
 	}
+
 	m.conn = conn
 	m.reader = bufio.NewReader(conn)
+
+	defer func() {
+		if nil != err && nil != m.conn {
+			m.conn.Close()
+			m.conn = nil
+		}
+	}()
 
 	// 如果需要密码
 	if m.Password != "" {
@@ -80,6 +88,11 @@ func (m *OpenVpnManagement) Connect() (err error) {
 			return
 		}
 		m.conn.Write([]byte(m.Password + "\n"))
+		line, _ = m.reader.ReadString(':') // 读取 "Enter Management Password:"
+		if !strings.Contains(strings.ToUpper(line), "SUCCESS") {
+			err = fmt.Errorf("密码错误")
+			return
+		}
 	}
 
 	return nil
@@ -110,10 +123,10 @@ func (m *OpenVpnManagement) RunCommand(cmd string, endStr string) (result string
 	}
 	m.conn.Write([]byte(cmd + "\n"))
 	var output strings.Builder
-
 	for {
-		line, err := m.reader.ReadString('\n')
-		if err != nil {
+		line, err1 := m.reader.ReadString('\n')
+		if err1 != nil {
+			err = err1
 			break
 		}
 		output.WriteString(line)
