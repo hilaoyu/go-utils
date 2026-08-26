@@ -21,6 +21,7 @@ type Client struct {
 	BytesSent        int64  `json:"bytes_sent"`
 	ConnectedSince   string `json:"connected_since"`
 	Username         string `json:"username"`
+	NodeId         string `json:"node_id,omitempty"`
 }
 
 // Route 表示一个路由表项
@@ -36,8 +37,8 @@ type StatusInfo struct {
 	NodeId  string   `json:"node_id,omitempty"`
 	Title   string   `json:"title"`
 	Time    string   `json:"time"`
-	Clients []Client `json:"clients"`
-	Routes  []Route  `json:"routes"`
+	Clients []*Client `json:"clients"`
+	Routes  []*Route  `json:"routes"`
 }
 
 type OpenVpnManagement struct {
@@ -164,7 +165,7 @@ func (m *OpenVpnManagement) GetStatus() (info *StatusInfo, err error) {
 				continue
 			}
 			clientId, _ := strconv.Atoi(parts[10])
-			client := Client{
+			client := &Client{
 				ClientId:         clientId,
 				CommonName:       parts[1],
 				RealAddress:      parts[2],
@@ -180,7 +181,7 @@ func (m *OpenVpnManagement) GetStatus() (info *StatusInfo, err error) {
 			if len(parts) < 5 {
 				continue
 			}
-			info.Routes = append(info.Routes, Route{
+			info.Routes = append(info.Routes, &Route{
 				VirtualAddress: parts[1],
 				CommonName:     parts[2],
 				RealAddress:    parts[3],
