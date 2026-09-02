@@ -212,3 +212,114 @@ func MapFind[M ~map[K]E, K string | int | int8 | int16 | int32 | int64 | uint | 
 	}
 	return
 }
+
+func DeepClone[T any](src T) T {
+	return cloneValue(reflect.ValueOf(src), make(map[visit]reflect.Value)).Interface().(T)
+}
+
+type visit struct {
+	typ reflect.Type
+	ptr uintptr
+}
+
+func cloneValue(v reflect.Value, visited map[visit]reflect.Value) reflect.Value {
+	if !v.IsValid() {
+		return v
+	}
+
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.IsNil() {
+			return reflect.Zero(v.Type())
+		}
+
+		key := visit{
+			typ: v.Type(),
+			ptr: v.Pointer(),
+		}
+
+		if cloned, ok := visited[key]; ok {
+			return cloned
+		}
+
+		cloned := reflect.New(v.Type().Elem())
+		visited[key] = cloned
+
+		cloned.Elem().Set(cloneValue(v.Elem(), visited))
+
+		return cloned
+
+	case reflect.Interface:
+		if v.IsNil() {
+			return reflect.Zero(v.Type())
+		}
+
+		cloned := cloneValue(v.Elem(), visited)
+
+		result := reflect.New(v.Type()).Elem()
+		result.Set(cloned)
+
+		return result
+
+	case reflect.Struct:
+		result := reflect.New(v.Type()).Elem()
+
+		for i := 0; i < v.NumField(); i++ {
+			srcField := v.Field(i)
+			dstField := result.Field(i)
+
+			// 未导出字段无法通过 reflect 设置
+			if !dstField.CanSet() {
+				continue
+			}
+
+			dstField.Set(cloneValue(srcField, visited))
+		}
+
+		return result
+
+	case reflect.Slice:
+		if v.IsNil() {
+			return reflect.Zero(v.Type())
+		}
+
+		result := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
+
+		for i := 0; i < v.Len(); i++ {
+			result.Index(i).Set(cloneValue(v.Index(i), visited))
+		}
+
+		return result
+
+	case reflect.Array:
+		result := reflect.New(v.Type()).Elem()
+
+		for i := 0; i < v.Len(); i++ {
+			result.Index(i).Set(cloneValue(v.Index(i), visited))
+		}
+
+		return result
+
+	case reflect.Map:
+		if v.IsNil() {
+			return reflect.Zero(v.Type())
+		}
+
+		result := reflect.MakeMapWithSize(v.Type(), v.Len())
+
+		iter := v.MapRange()
+		for iter.Next() {
+			key := cloneValue(iter.Key(), visited)
+			val := cloneValue(iter.Value(), visited)
+
+			result.SetMapIndex(key, val)
+		}
+
+		return result
+
+	default:
+		// string、int、bool、float、chan、func 等
+		// 对于基础类型直接复制
+		return v
+	}
+}
