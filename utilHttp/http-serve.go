@@ -5,10 +5,14 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -235,5 +239,96 @@ func GetClientSource(r *http.Request) (clientSource string) {
 	if "" == clientSource {
 		clientSource = GetClientIP(r)
 	}
+	return
+}
+
+func GetRequestValues(r *http.Request) (values url.Values, err error) {
+	values = url.Values{}
+
+	if r == nil {
+		err = fmt.Errorf("request is nil")
+		return
+	}
+
+	// 1. 获取 URL 查询参数
+	for key, vals := range r.URL.Query() {
+		values[key] = append([]string(nil), vals...)
+	}
+
+	// 2. 解析 Content-Type
+	contentType, _, _ := mime.ParseMediaType(
+		r.Header.Get("Content-Type"),
+	)
+
+	switch contentType {
+	case "application/x-www-form-urlencoded", "multipart/form-data":
+		if err1 := r.ParseForm(); err1 != nil {
+			err = err1
+			return
+		}
+
+		// POST 表单参数覆盖同名 GET 参数
+		for key, vals := range r.PostForm {
+			values[key] = append([]string(nil), vals...)
+		}
+
+	case "application/json":
+		if r.Body == nil {
+			return
+		}
+
+		body, err1 := io.ReadAll(r.Body)
+		if err1 != nil {
+			err = err1
+			return
+		}
+
+		// 恢复请求体，供后续业务读取
+		r.Body = io.NopCloser(strings.NewReader(string(body)))
+
+		var data map[string]json.RawMessage
+		if err2 := json.Unmarshal(body, &data); err2 != nil {
+			err = err2
+			return
+		}
+
+		// JSON 参数覆盖同名 GET 参数
+		for key, raw := range data {
+			var value interface{}
+			if err3 := json.Unmarshal(raw, &value); err3 != nil {
+				err = err3
+				return
+			}
+
+			switch v := value.(type) {
+			case string:
+				values.Set(key, v)
+			case nil:
+				values.Del(key)
+			case map[string]interface{}, []interface{}:
+				b, err4 := json.Marshal(v)
+				if err4 != nil {
+					err = err4
+					return
+				}
+				values.Set(key, string(b))
+			default:
+				values.Set(key, fmt.Sprint(v))
+			}
+		}
+
+	default:
+		// 其他请求类型只返回 URL 查询参数
+	}
+
+	return
+}
+
+func GetRequestValue(r *http.Request, key string) (value string, err error) {
+	values, err := GetRequestValues(r)
+	if nil != err {
+		return
+	}
+	value = values.Get(key)
 	return
 }

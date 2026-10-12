@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/hilaoyu/go-utils/utilCmd"
@@ -145,11 +146,62 @@ func GetModTime(path string) (int64, error) {
 }
 
 func Move(src string, dst string) error {
-	dstDir := filepath.Dir(dst)
-	if !CheckDir(dstDir) {
-		return errors.New("目标目录不可写")
+	// 优先尝试原子重命名。
+	err := os.Rename(src, dst)
+	if err == nil {
+		return nil
 	}
-	return os.Rename(src, dst)
+
+	// 只有跨设备错误才退化为复制。
+	if !errors.Is(err, syscall.EXDEV) {
+		return fmt.Errorf("rename %s -> %s: %w", src, dst, err)
+	}
+
+	// 确保目标目录存在。
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return fmt.Errorf("create destination directory: %w", err)
+	}
+
+	// 打开源文件。
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open source file: %w", err)
+	}
+	defer in.Close()
+
+	// 创建目标文件，避免意外覆盖已有文件。
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return fmt.Errorf("create destination file: %w", err)
+	}
+
+	// 复制数据。
+	_, copyErr := io.Copy(out, in)
+	if copyErr != nil {
+		out.Close()
+		os.Remove(dst)
+		return fmt.Errorf("copy file: %w", copyErr)
+	}
+
+	// 确保数据写入成功。
+	if err := out.Sync(); err != nil {
+		out.Close()
+		os.Remove(dst)
+		return fmt.Errorf("sync destination file: %w", err)
+	}
+
+	if err := out.Close(); err != nil {
+		os.Remove(dst)
+		return fmt.Errorf("close destination file: %w", err)
+	}
+
+	// 复制成功后才删除源文件。
+	if err := os.Remove(src); err != nil {
+		return fmt.Errorf("file copied to %s but failed to remove source %s: %w",
+			dst, src, err)
+	}
+
+	return nil
 }
 
 func First(root string, findFn FilterFunc, recursion bool) (string, error) {
