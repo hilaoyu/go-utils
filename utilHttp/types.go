@@ -74,3 +74,11 @@ type ApiDataSelectOption struct {
 	Selected bool        `json:"selected,omitempty"`
 	Disabled bool        `json:"disabled,omitempty"`
 }
+
+
+func IsHttpURL(path string) bool {
+	u, err := url.ParseRequestURI(path)
+	return err == nil &&
+		(u.Scheme == "http" || u.Scheme == "https") &&
+		u.Host != ""
+}
